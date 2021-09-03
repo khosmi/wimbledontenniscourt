@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: approval
+  labels:
+    app: approval
+spec:
+  ports:
+    - port: 8080
+      targetPort: 8080
+  selector:
+    app: approval

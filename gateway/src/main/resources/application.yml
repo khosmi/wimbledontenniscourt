@@ -1,0 +1,66 @@
+server:
+  port: 8088
+
+---
+
+spring:
+  profiles: default
+  cloud:
+    gateway:
+      routes:
+        - id: reservation
+          uri: http://localhost:8081
+          predicates:
+            - Path=/reservations/** 
+        - id: approval
+          uri: http://localhost:8082
+          predicates:
+            - Path=/approvals/** 
+        - id: mycourt
+          uri: http://localhost:8083
+          predicates:
+            - Path= /mycourts/**
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+
+
+---
+
+spring:
+  profiles: docker
+  cloud:
+    gateway:
+      routes:
+        - id: reservation
+          uri: http://reservation:8080
+          predicates:
+            - Path=/reservations/** 
+        - id: approval
+          uri: http://approval:8080
+          predicates:
+            - Path=/approvals/** 
+        - id: mycourt
+          uri: http://mycourt:8080
+          predicates:
+            - Path= /mycourts/**
+      globalcors:
+        corsConfigurations:
+          '[/**]':
+            allowedOrigins:
+              - "*"
+            allowedMethods:
+              - "*"
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+
+server:
+  port: 8080
