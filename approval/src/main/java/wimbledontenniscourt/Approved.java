@@ -7,7 +7,7 @@ public class Approved extends AbstractEvent {
     private String playerName;
     private String time;
     private String status;
-    private String reservationId;
+    private Long reservationId;
 
     public Approved(){
         super();
@@ -48,11 +48,11 @@ public class Approved extends AbstractEvent {
     public void setStatus(String status) {
         this.status = status;
     }
-    public String getReservationId() {
+    public Long getReservationId() {
         return reservationId;
     }
 
-    public void setReservationId(String reservationId) {
+    public void setReservationId(Long reservationId) {
         this.reservationId = reservationId;
     }
 }

@@ -7,7 +7,7 @@ public class CancledApproval extends AbstractEvent {
     private String player_name;
     private String time;
     private String status;
-    private String reservation_id;
+    private Long reservation_id;
 
     public Long getId() {
         return id;
@@ -44,11 +44,11 @@ public class CancledApproval extends AbstractEvent {
     public void setStatus(String status) {
         this.status = status;
     }
-    public String getReservationId() {
+    public Long getReservationId() {
         return reservation_id;
     }
 
-    public void setReservationId(String reservation_id) {
+    public void setReservationId(Long reservation_id) {
         this.reservation_id = reservation_id;
     }
 }

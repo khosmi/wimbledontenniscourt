@@ -19,11 +19,14 @@ public class PolicyHandler{
 
         System.out.println("\n\n##### listener Receive : " + reserved.toJson() + "\n\n");
 
-
-
         // Sample Logic //
-        // Approval approval = new Approval();
-        // approvalRepository.save(approval);
+        Approval approval = new Approval();
+        approval.setCourtName(reserved.getCourtName());
+        approval.setPlayerName(reserved.getPlayerName());
+        approval.setReservationId(reserved.getId());
+        approval.setTime(reserved.getTime());
+        approval.setStatus(reserved.getStatus());
+        approvalRepository.save(approval);
 
     }
 

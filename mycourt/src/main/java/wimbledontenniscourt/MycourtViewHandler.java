@@ -45,6 +45,7 @@ public class MycourtViewHandler {
         try {
             if (!approved.validate()) return;
                 // view 객체 조회
+                System.out.println("\n\n##### listener UpdateCourt view handler : " + approved.toJson() + "\n\n");
 
                     List<Mycourt> mycourtList = mycourtRepository.findByReservationId(approved.getReservationId());
                     for(Mycourt mycourt : mycourtList){

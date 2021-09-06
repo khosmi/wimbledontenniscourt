@@ -16,7 +16,7 @@ public class Approval {
     private String playerName;
     private String time;
     private String status;
-    private String reservationId;
+    private Long reservationId;
 
     @PostPersist
     public void onPostPersist(){
@@ -26,10 +26,12 @@ public class Approval {
         Approved approved = new Approved();
         BeanUtils.copyProperties(this, approved);
         approved.publishAfterCommit();
+   
+        System.out.println("\n\n##### Approved Created : " + approved.toJson() + "\n\n");
 
-        CancledApproval cancledApproval = new CancledApproval();
-        BeanUtils.copyProperties(this, cancledApproval);
-        cancledApproval.publishAfterCommit();
+       // CancledApproval cancledApproval = new CancledApproval();
+       // BeanUtils.copyProperties(this, cancledApproval);
+       //cancledApproval.publishAfterCommit();
 
     }
 
@@ -68,11 +70,11 @@ public class Approval {
     public void setStatus(String status) {
         this.status = status;
     }
-    public String getReservationId() {
+    public Long getReservationId() {
         return reservationId;
     }
 
-    public void setReservationId(String reservationId) {
+    public void setReservationId(Long reservationId) {
         this.reservationId = reservationId;
     }
 

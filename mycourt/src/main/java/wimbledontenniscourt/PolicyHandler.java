@@ -23,18 +23,20 @@ public class PolicyHandler{
         // Sample Logic //
 
     }
+    /*
     @StreamListener(KafkaProcessor.INPUT)
     public void wheneverApproved_UpdateCourt(@Payload Approved approved){
 
         if(!approved.validate()) return;
 
-        System.out.println("\n\n##### listener UpdateCourt : " + approved.toJson() + "\n\n");
+        System.out.println("\n\n##### listener UpdateCourt policy handler: " + approved.toJson() + "\n\n");
 
 
 
         // Sample Logic //
 
     }
+    */
     @StreamListener(KafkaProcessor.INPUT)
     public void wheneverCancledReservation_UpdateCourt(@Payload CancledReservation cancledReservation){
 

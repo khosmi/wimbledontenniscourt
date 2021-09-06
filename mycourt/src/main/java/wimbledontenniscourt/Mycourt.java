@@ -10,8 +10,8 @@ public class Mycourt {
         @Id
         @GeneratedValue(strategy=GenerationType.AUTO)
         private Long id;
-        private String reservationId;
-        private String approvalId;
+        private Long reservationId;
+        private Long approvalId;
         private String courtName;
         private String playerName;
         private String time;
@@ -25,18 +25,18 @@ public class Mycourt {
         public void setId(Long id) {
             this.id = id;
         }
-        public String getReservationId() {
+        public Long getReservationId() {
             return reservationId;
         }
 
-        public void setReservationId(String reservationId) {
+        public void setReservationId(Long reservationId) {
             this.reservationId = reservationId;
         }
-        public String getApprovalId() {
+        public Long getApprovalId() {
             return approvalId;
         }
 
-        public void setApprovalId(String approvalId) {
+        public void setApprovalId(Long approvalId) {
             this.approvalId = approvalId;
         }
         public String getCourtName() {
