@@ -36,7 +36,9 @@ public class Reservation {
         wimbledontenniscourt.external.Approval approval = new wimbledontenniscourt.external.Approval();
         // mappings goes here
         ReservationApplication.applicationContext.getBean(wimbledontenniscourt.external.ApprovalService.class)
-            .cancelApproval(approval);
+            //.cancelApproval(approval);
+            //.cancelApproval(this.getId(), approval);
+            .cancelApproval(this.getId());
 
     }
 

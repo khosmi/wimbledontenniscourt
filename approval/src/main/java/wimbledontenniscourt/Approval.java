@@ -23,15 +23,21 @@ public class Approval {
     }
     @PostUpdate
     public void onPostUpdate(){
-        Approved approved = new Approved();
-        BeanUtils.copyProperties(this, approved);
-        approved.publishAfterCommit();
-   
-        System.out.println("\n\n##### Approved Created : " + approved.toJson() + "\n\n");
 
-       // CancledApproval cancledApproval = new CancledApproval();
-       // BeanUtils.copyProperties(this, cancledApproval);
-       //cancledApproval.publishAfterCommit();
+        System.out.println("\n\n##### STATUS : "+this.getStatus()+"\n\n");
+        if (this.getStatus().equals("approved")){
+            Approved approved = new Approved();
+            BeanUtils.copyProperties(this, approved);
+            approved.publishAfterCommit();
+            System.out.println("\n\n##### Approved Created : " + approved.toJson() + "\n\n");
+        }else if (this.getStatus().equals("cancled reservation")){
+            CancledApproval cancledApproval = new CancledApproval();
+            BeanUtils.copyProperties(this, cancledApproval);
+            cancledApproval.publishAfterCommit();
+            System.out.println("\n\n##### Approval Cancled : " + cancledApproval.toJson() + "\n\n");
+        }else{
+            System.out.println("\n\n##### STATUS IS NOT ACCEPTABLE!! : " + this.getStatus() + "\n\n");
+        }
 
     }
 

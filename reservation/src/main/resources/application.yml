@@ -38,6 +38,25 @@ logging:
     org.springframework.cloud: debug
 server:
   port: 8081
+
+api:
+  url:
+    pay: http://localhost:8082
+
+# circuit breaker 설정 start
+feign:
+  hystrix:
+    enabled: true
+
+hystrix:
+  command:
+    # 전역설정
+    default:
+      #execution.isolation.thread.timeoutInMilliseconds: 610
+      execution.isolation.thread.timeoutInMilliseconds: 30000
+# circuit breaker 설정 end
+
+
 ---
 
 spring:
@@ -63,3 +82,21 @@ spring:
         event-out:
           destination: wimbledontenniscourt
           contentType: application/json
+
+api:
+  url:
+    pay: http://approval:8080
+
+
+# circuit breaker 설정 start
+feign:
+  hystrix:
+    enabled: true
+
+hystrix:
+  command:
+    # 전역설정
+    default:
+      #execution.isolation.thread.timeoutInMilliseconds: 610
+      execution.isolation.thread.timeoutInMilliseconds: 30000
+# circuit breaker 설정 end
