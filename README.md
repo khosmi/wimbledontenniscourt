@@ -543,7 +543,7 @@ Materialized View를 구현하여, 타 마이크로서비스의 데이터 원본
 
 위와 같이 예약을 하게되면 Reservation > Approval > Mycourt로 예약이 Assigned 되고
 
-예약 취소가 되면 Status가 Cancelled Reservation로 Update 되는 것을 볼 수 있다.
+예약 취소가 되면 Status가 Cancelled Reservation로 Update 되거나 삭제되는 것을 볼 수 있다.
 
 또한 Correlation을 Key를 활용하여 Id를 Key값을 하고 원하는 예약하고 서비스간의 공유가 이루어 졌다.
 
