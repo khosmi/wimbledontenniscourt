@@ -675,9 +675,6 @@ curl https://raw.githubusercontent.com/helm/helm/master/scripts/get-helm-3 > get
 chmod 700 get_helm.sh
 ./get_helm.sh
 
-- Azure Only
-kubectl patch storageclass managed -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
-
 - 카프카 설치
 kubectl --namespace kube-system create sa tiller      # helm 의 설치관리자를 위한 시스템 사용자 생성
 kubectl create clusterrolebinding tiller --clusterrole cluster-admin --serviceaccount=kube-system:tiller
@@ -691,7 +688,7 @@ kubectl get po -n kafka -o wide
 ```
 * Topic 생성
 ```
-kubectl -n kafka exec my-kafka-0 -- /usr/bin/kafka-topics --zookeeper my-kafka-zookeeper:2181 --topic movie --create --partitions 1 --replication-factor 1
+kubectl -n kafka exec my-kafka-0 -- /usr/bin/kafka-topics --zookeeper my-kafka-zookeeper:2181 --topic wimbledontenniscourt --create --partitions 1 --replication-factor 1
 ```
 * Topic 확인
 ```
@@ -699,16 +696,16 @@ kubectl -n kafka exec my-kafka-0 -- /usr/bin/kafka-topics --zookeeper my-kafka-z
 ```
 * 이벤트 발행하기
 ```
-kubectl -n kafka exec -ti my-kafka-0 -- /usr/bin/kafka-console-producer --broker-list my-kafka:9092 --topic movie
+kubectl -n kafka exec -ti my-kafka-0 -- /usr/bin/kafka-console-producer --broker-list my-kafka:9092 --topic wimbledontenniscourt
 ```
 * 이벤트 수신하기
 ```
-kubectl -n kafka exec -ti my-kafka-0 -- /usr/bin/kafka-console-consumer --bootstrap-server my-kafka:9092 --topic movie
+kubectl -n kafka exec -ti my-kafka-0 -- /usr/bin/kafka-console-consumer --bootstrap-server my-kafka:9092 --topic wimbledontenniscourt
 ```
 
 * 소스 가져오기
 ```
-git clone https://github.com/khosmi/movie.git
+git clone https://github.com/khosmi/wimbledontenniscourt.git
 ```
 
 ## Deploy / Pipeline
@@ -719,28 +716,28 @@ git clone https://github.com/khosmi/movie.git
 # label과 이미지 이름 소문자로 변경 필요
 
 
-cd Pay
+cd approval
 # jar 파일 생성
 mvn package
 # 이미지 빌드
-docker build -t user1919.azurecr.io/pay .
+docker build -t user01acr1.azurecr.io/approval .
 # acr에 이미지 푸시
-docker push user1919.azurecr.io/pay
+docker push user01acr1.azurecr.io/approval
 # kubernetes에 service, deployment 배포
 kubectl apply -f kubernetes
 # Pod 재배포 
 # Deployment가 변경되어야 새로운 이미지로 Pod를 실행한다.
 # Deployment가 변경되지 않아도 새로운 Image로 Pod 실행하기 위함
-kubectl rollout restart deployment pay  
+kubectl rollout restart deployment approval  
 cd ..
 
-cd Reservation
+cd reservation
 # jar 파일 생성
 mvn package
 # 이미지 빌드
-docker build -t user1919.azurecr.io/reservation .
+docker build -t user01acr1.azurecr.io/reservation .
 # acr에 이미지 푸시
-docker push user1919.azurecr.io/reservation
+docker push user01acr1.azurecr.io/reservation
 # kubernetes에 service, deployment 배포
 kubectl apply -f kubernetes
 # Pod 재배포 
@@ -749,64 +746,52 @@ kubectl apply -f kubernetes
 kubectl rollout restart deployment reservation  
 cd ..
 
-cd Ticket
+cd mycourt
 # jar 파일 생성
 mvn package
 # 이미지 빌드
-docker build -t user1919.azurecr.io/ticket .
+docker build -t user01acr1.azurecr.io/mycourt .
 # acr에 이미지 푸시
-docker push user1919.azurecr.io/ticket
+docker push user01acr1.azurecr.io/mycourt
 # kubernetes에 service, deployment 배포
 kubectl apply -f kubernetes
 # Pod 재배포
 # Deployment가 변경되어야 새로운 이미지로 Pod를 실행한다.
 # Deployment가 변경되지 않아도 새로운 Image로 Pod 실행하기 위함
-kubectl rollout restart deployment ticket  
+kubectl rollout restart deployment mycourt  
 cd ..
 
 cd gateway
 # jar 파일 생성
 mvn package
 # 이미지 빌드
-docker build -t user1919.azurecr.io/gateway .
+docker build -t user01acr1.azurecr.io/gateway .
 # acr에 이미지 푸시
-docker push user1919.azurecr.io/gateway
+docker push user01acr1.azurecr.io/gateway
 # kubernetes에 service, deployment 배포
-kubectl create deploy gateway --image=user1919.azurecr.io/gateway   
+kubectl create deploy gateway --image=user01acr1.azurecr.io/gateway   
 kubectl expose deploy gateway --type=LoadBalancer --port=8080 
 
 kubectl rollout restart deployment gateway
 cd ..
 
-cd MyReservation
-# jar 파일 생성
-mvn package
-# 이미지 빌드
-docker build -t user1919.azurecr.io/myreservation .
-# acr에 이미지 푸시
-docker push user1919.azurecr.io/myreservation
-# kubernetes에 service, deployment 배포
-kubectl apply -f kubernetes
-# Pod 재배포
-# Deployment가 변경되어야 새로운 이미지로 Pod를 실행한다.
-# Deployment가 변경되지 않아도 새로운 Image로 Pod 실행하기 위함
-kubectl rollout restart deployment myreservation  
-cd ..
-
 ```
 * Service, Pod, Deploy 상태 확인
 
-![image](https://user-images.githubusercontent.com/86760528/131059867-8d387dc1-bac2-4d68-972b-1cc1d0629d78.png)
+![image](https://user-images.githubusercontent.com/86760622/132300923-69b0c1bc-f757-4263-bf23-68c7b585903d.png)
 
 
 * deployment.yml  참고
 
-![image](https://user-images.githubusercontent.com/86760528/131059850-1c47652c-72d2-413b-9e6d-3733d519c1e5.png)
+![image](https://user-images.githubusercontent.com/86760622/132301250-baa0ba10-4f0a-49a5-928a-79afe733b1e3.png)
+
 
 ## 서킷 브레이킹
 * 서킷 브레이킹 프레임워크의 선택: Spring FeignClient + Hystrix 옵션을 사용하여 구현함
-* Reservation -> Pay 와의 Req/Res 연결에서 요청이 과도한 경우 CirCuit Breaker 통한 격리
+* 예약 취소시 Reservation -> Approval과의 Req/Res 연결에서 요청이 과도한 경우 CirCuit Breaker 통한 격리
 * Hystrix 를 설정: 요청처리 쓰레드에서 처리시간이 1500 밀리가 넘어서기 시작하여 어느정도 유지되면 CB 회로가 닫히도록 (요청을 빠르게 실패처리, 차단) 설정
+* 삭제만 Req/Res 방식으로 개발을 했기 때문에 Siege 부하를 주기위해서는 많은 데이터가 생성되어야 하며 id를 변수화 하며 호출해야함
+* 따라서, 예약 등록시 Pub/Sub 방식을  Req/Res 방식으로 변경하고 Test 를 수행함
 
 ```
 // Reservation 서비스 application.yml
@@ -821,16 +806,41 @@ hystrix:
       execution.isolation.thread.timeoutInMilliseconds: 1500
 ```
 
+```
+// Reservation 서비스 ApprovalService.java
+
+@FeignClient(name="approval", url="${api.url.pay}", fallback=ApprovalServiceImpl.class)
+//@FeignClient(name="approval", url="${api.url.pay}")
+public interface ApprovalService {
+    @RequestMapping(method= RequestMethod.DELETE, path="/approvals/{id}")
+    public void cancelApproval(@PathVariable long id);
+
+    @RequestMapping(method= RequestMethod.POST, path="/approvals")
+    public void createApproval(@RequestBody Approval approval);
+    
+```
+
 
 ```
-// Pay 서비스 Pay.java
+// Approval 서비스 Approval.java
 
     @PostPersist
     public void onPostPersist(){
-       
-        Payed payed = new Payed();
-        BeanUtils.copyProperties(this, payed);
-        payed.publishAfterCommit();
+
+        try {
+            Thread.currentThread().sleep((long) (1000 + Math.random() * 220));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        
+    }
+
+
+    @PreRemove
+    public void onPreRemove(){
+        CancledApproval cancledApproval = new CancledApproval();
+        BeanUtils.copyProperties(this, cancledApproval);
+        cancledApproval.publishAfterCommit();
 
         try {
             Thread.currentThread().sleep((long) (1000 + Math.random() * 220));
@@ -855,16 +865,18 @@ spec:
 
 * siege pod 생성
 ```
-/home/project/team/forthcafe/yaml/kubectl apply -f siege.yaml
+/home/project/tennis/siege/kubectl apply -f siege.yaml
 ```
 
 * 부하테스터 siege 툴을 통한 서킷 브레이커 동작 확인: 동시사용자 100명 60초 동안 실시
 ```
 kubectl exec -it pod/siege -c siege -- /bin/bash
-siege -c100 -t30S  -v --content-type "application/json" 'http://52.141.61.164:8080/orders POST {"movie":"ironman"}'
+siege -c100 -t30S  -v --content-type "application/json" 'http://10.0.241.98:8080/reservations PATCH {"status":"cancled reservation"}'
 ```
 ![image](https://user-images.githubusercontent.com/86760528/131079671-40199483-9c22-42fc-8fb3-0dbc8a52b183.png)
 ![image](https://user-images.githubusercontent.com/86760528/131079931-b61cd3fa-44ac-42ea-9624-c2fa7b32ff69.png)
+
+
 
 ## ConfigMap
 * MyReservation을 실행할 때 환경변수 사용하여 활성 프로파일을 설정한다.
