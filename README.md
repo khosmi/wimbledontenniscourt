@@ -1000,8 +1000,6 @@ kubectl get deploy mycourt -w
 kubectl get deploy mycourt -w
 ```
 
-![image](https://user-images.githubusercontent.com/86760622/132317328-025601c2-d1ad-4382-b55a-7b0dbcf45b81.png)
-
 ![image](https://user-images.githubusercontent.com/86760622/132351154-3ddd9c01-674c-4659-b2f0-045fd27f211e.png)
 
 ```
@@ -1013,60 +1011,21 @@ kubectl get deploy mycourt -w
 ## 무정지 재배포 (Readiness Probe)
 * Readiness 설정이 없는 경우(deployment에서 Readiness 설정을 제거한 후 배포한다.)
 ```yaml
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: myreservation
-  labels:
-    app: myreservation
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: myreservation
-  template:
-    metadata:
-      labels:
-        app: myreservation
-    spec:
-      containers:
-        - name: myreservation
-          image: user1919.azurecr.io/myreservation:latest
-          imagePullPolicy: Always
-          ports:
-            - containerPort: 8080
-          livenessProbe:
-            httpGet:
-              path: '/actuator/health'
-              port: 8080
-            initialDelaySeconds: 120
-            timeoutSeconds: 2
-            periodSeconds: 5
-            failureThreshold: 5
-          resources:
-            limits:
-              cpu: 500m
-            requests:
-              cpu: 200m
-          env:
-          - name: PROFILE
-            valueFrom:
-              configMapKeyRef:
-                name: profile-cm
-                key: profile        
+
+
 ```
 ```
-kubectl apply -n huijun -f MyReservation/kubernetes/deployment.yml
+kubectl apply -f mycourt/kubernetes/deployment.yml
 ```
 * siege로 부하테스트를 한다. (워크로드 1000명, 1분)
 ```
 kubectl exec -it pod/siege -c siege -- /bin/bash
-siege -c1000 -t60S  -v http://myreservation:8080/myReservations
+siege -c1000 -t60S  -v http://mycourt:8080/mycourts
 ```
 
 * pod를 재배포 한다.
 
-kubectl rollout restart deployment myreservation  -n huijun
+kubectl rollout restart deployment mycourt
 
 
 * siege의 결과 (일부 요청이 실패로 처리된다.)
