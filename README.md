@@ -23,29 +23,29 @@
 
 
 # Event Storming 결과
-![image](https://user-images.githubusercontent.com/86760622/130416307-f2fc6258-6512-4a41-bb9e-787cb997ceae.png)
+![image](https://user-images.githubusercontent.com/86760622/132291700-fee10421-8b34-47f4-bcca-f3d811d6e1e6.png)
+
 
 
 # 헥사고날 아키텍처 다이어그램 도출
-![image](https://user-images.githubusercontent.com/86760613/131060623-ad62a938-b703-43d6-b23e-f6f6a317e942.png)
+![image](https://user-images.githubusercontent.com/86760622/132291981-d20fb41f-8799-4115-98b3-da1d42825ac3.png)
+
 
 # 구현
-분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다. (각각의 포트넘버는 8080 ~ 8084이다)
+분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다. (각각의 포트넘버는 8080 ~ 8083이다)
 ```
 cd gateway
 mvn spring-boot:run
 
-cd Reservation
+cd reservation
 mvn spring-boot:run
 
-cd Pay
+cd approval
 mvn spring-boot:run
 
-cd Ticket
+cd mycourt
 mvn spring-boot:run
 
-cd MyReservation
-mvn spring-boot:run
 ```
 
 ## DDD 의 적용
@@ -54,7 +54,8 @@ Entity Pattern과 Repository Pattern을 적용하기 위해 Spring Data REST의 
 
 **Reservation 서비스의 Reservation.java**
 ```java 
-package movie;
+
+package wimbledontenniscourt;
 
 import javax.persistence.*;
 import org.springframework.beans.BeanUtils;
@@ -68,40 +69,33 @@ public class Reservation {
     @Id
     @GeneratedValue(strategy=GenerationType.AUTO)
     private Long id;
-    private String userid;
-    private String movie;
-    private String theater;
+    private String courtName;
+    private String playerName;
     private String time;
-    private String seatNo;
-    private Integer price;
-    private String cardNo;
     private String status;
 
     @PostPersist
     public void onPostPersist(){
         Reserved reserved = new Reserved();
         BeanUtils.copyProperties(this, reserved);
-        reserved.setStatus("Reserved");  // 예약상태 입력 by khos
         reserved.publishAfterCommit();
+
+    }
+    @PreUpdate
+    public void onPreUpdate(){
+        CancledReservation cancledReservation = new CancledReservation();
+        BeanUtils.copyProperties(this, cancledReservation);
+        cancledReservation.publishAfterCommit();
 
         //Following code causes dependency to external APIs
         // it is NOT A GOOD PRACTICE. instead, Event-Policy mapping is recommended.
 
-        movie.external.Pay pay = new movie.external.Pay();
+        wimbledontenniscourt.external.Approval approval = new wimbledontenniscourt.external.Approval();
         // mappings goes here
-        BeanUtils.copyProperties(this, pay); // Pay 값 설정 by khos
-        pay.setReservationId(reserved.getId());
-        pay.setStatus("reserved"); // Pay 값 설정 by khos
-        ReservationApplication.applicationContext.getBean(movie.external.PayService.class)
-            .pay(pay);
-
-    }
-    @PreRemove
-    public void onPreRemove(){
-        CanceledReservation canceledReservation = new CanceledReservation();
-        BeanUtils.copyProperties(this, canceledReservation);
-        canceledReservation.setStatus("Canceled Reservation");  // 예약상태 입력 by khos
-        canceledReservation.publishAfterCommit();
+        ReservationApplication.applicationContext.getBean(wimbledontenniscourt.external.ApprovalService.class)
+            //.cancelApproval(approval);
+            //.cancelApproval(this.getId(), approval);
+            .cancelApproval(this.getId());
 
     }
 
@@ -112,26 +106,19 @@ public class Reservation {
     public void setId(Long id) {
         this.id = id;
     }
-    public String getUserid() {
-        return userid;
+    public String getCourtName() {
+        return courtName;
     }
 
-    public void setUserid(String userid) {
-        this.userid = userid;
+    public void setCourtName(String courtName) {
+        this.courtName = courtName;
     }
-    public String getMovie() {
-        return movie;
-    }
-
-    public void setMovie(String movie) {
-        this.movie = movie;
-    }
-    public String getTheater() {
-        return theater;
+    public String getPlayerName() {
+        return playerName;
     }
 
-    public void setTheater(String theater) {
-        this.theater = theater;
+    public void setPlayerName(String playerName) {
+        this.playerName = playerName;
     }
     public String getTime() {
         return time;
@@ -139,27 +126,6 @@ public class Reservation {
 
     public void setTime(String time) {
         this.time = time;
-    }
-    public String getSeatNo() {
-        return seatNo;
-    }
-
-    public void setSeatNo(String seatNo) {
-        this.seatNo = seatNo;
-    }
-    public Integer getPrice() {
-        return price;
-    }
-
-    public void setPrice(Integer price) {
-        this.price = price;
-    }
-    public String getCardNo() {
-        return cardNo;
-    }
-
-    public void setCardNo(String cardNo) {
-        this.cardNo = cardNo;
     }
     public String getStatus() {
         return status;
@@ -173,11 +139,12 @@ public class Reservation {
 
 ```
 
-**Pay 서비스의 PolicyHandler.java**
+**Approval 서비스의 PolicyHandler.java**
 ```java
-package movie;
 
-import movie.config.kafka.KafkaProcessor;
+package wimbledontenniscourt;
+
+import wimbledontenniscourt.config.kafka.KafkaProcessor;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -185,32 +152,25 @@ import org.springframework.cloud.stream.annotation.StreamListener;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
-
 @Service
 public class PolicyHandler{
-    @Autowired PayRepository payRepository;
+    @Autowired ApprovalRepository approvalRepository;
 
     @StreamListener(KafkaProcessor.INPUT)
-    public void wheneverCanceledReservation_CancelPay(@Payload CanceledReservation canceledReservation){
+    public void wheneverReserved_Receive(@Payload Reserved reserved){
 
-         try {
-            if (!canceledReservation.validate()) return;
-                // view 객체 조회
+        if(!reserved.validate()) return;
 
-                    List<Pay> payList = payRepository.findByReservationId(canceledReservation.getId());
-                    for(Pay pay : payList){
-                    // view 객체에 이벤트의 eventDirectValue 를 set 함
-                    pay.setStatus(canceledReservation.getStatus());
-                // view 레파지 토리에 save
-                payRepository.save(pay);
-                }
+        System.out.println("\n\n##### listener Receive : " + reserved.toJson() + "\n\n");
 
-        }catch (Exception e){
-            e.printStackTrace();
-        }
+        // Sample Logic //
+        Approval approval = new Approval();
+        approval.setCourtName(reserved.getCourtName());
+        approval.setPlayerName(reserved.getPlayerName());
+        approval.setReservationId(reserved.getId());
+        approval.setTime(reserved.getTime());
+        approval.setStatus(reserved.getStatus());
+        approvalRepository.save(approval);
 
     }
 
@@ -218,14 +178,16 @@ public class PolicyHandler{
     @StreamListener(KafkaProcessor.INPUT)
     public void whatever(@Payload String eventString){}
 
+
 }
 
 ```
 
 
-**Pay 서비스의 Pay.java**
+**Approval 서비스의 Approval.java**
 ```java
-package movie;
+
+package wimbledontenniscourt;
 
 import javax.persistence.*;
 import org.springframework.beans.BeanUtils;
@@ -233,43 +195,38 @@ import java.util.List;
 import java.util.Date;
 
 @Entity
-@Table(name="Pay_table")
-public class Pay {
+@Table(name="Approval_table")
+public class Approval {
 
     @Id
     @GeneratedValue(strategy=GenerationType.AUTO)
     private Long id;
-    private Long reservationId;
-    private String userid;
-    private String movie;
-    private String theater;
+    private String courtName;
+    private String playerName;
     private String time;
-    private Integer price;
-    private String cardNo;
     private String status;
-    private String seatNo;
+    private Long reservationId;
 
     @PostPersist
     public void onPostPersist(){
-        Payed payed = new Payed();
-        BeanUtils.copyProperties(this, payed);
-        payed.publishAfterCommit();
-
     }
-
     @PostUpdate
     public void onPostUpdate(){
-        Payed payed = new Payed();
-        BeanUtils.copyProperties(this, payed);
-        payed.publishAfterCommit();
-    }
 
-    @PreRemove
-    public void onPreRemove(){
-        CanceledPay canceledPay = new CanceledPay();
-        BeanUtils.copyProperties(this, canceledPay);
-        canceledPay.setStatus("Canceled Payment");  // 상태 변경 by khos
-        canceledPay.publishAfterCommit();
+        System.out.println("\n\n##### STATUS : "+this.getStatus()+"\n\n");
+        if (this.getStatus().equals("approved")){
+            Approved approved = new Approved();
+            BeanUtils.copyProperties(this, approved);
+            approved.publishAfterCommit();
+            System.out.println("\n\n##### Approved Created : " + approved.toJson() + "\n\n");
+        }else if (this.getStatus().equals("cancled reservation")){
+            CancledApproval cancledApproval = new CancledApproval();
+            BeanUtils.copyProperties(this, cancledApproval);
+            cancledApproval.publishAfterCommit();
+            System.out.println("\n\n##### Approval Cancled : " + cancledApproval.toJson() + "\n\n");
+        }else{
+            System.out.println("\n\n##### STATUS IS NOT ACCEPTABLE!! : " + this.getStatus() + "\n\n");
+        }
 
     }
 
@@ -279,6 +236,34 @@ public class Pay {
 
     public void setId(Long id) {
         this.id = id;
+    }
+    public String getCourtName() {
+        return courtName;
+    }
+
+    public void setCourtName(String courtName) {
+        this.courtName = courtName;
+    }
+    public String getPlayerName() {
+        return playerName;
+    }
+
+    public void setPlayerName(String playerName) {
+        this.playerName = playerName;
+    }
+    public String getTime() {
+        return time;
+    }
+
+    public void setTime(String time) {
+        this.time = time;
+    }
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
     public Long getReservationId() {
         return reservationId;
@@ -287,157 +272,13 @@ public class Pay {
     public void setReservationId(Long reservationId) {
         this.reservationId = reservationId;
     }
-    public String getUserid() {
-        return userid;
-    }
-
-    public void setUserid(String userid) {
-        this.userid = userid;
-    }
-    public String getMovie() {
-        return movie;
-    }
-
-    public void setMovie(String movie) {
-        this.movie = movie;
-    }
-    public String getTheater() {
-        return theater;
-    }
-
-    public void setTheater(String theater) {
-        this.theater = theater;
-    }
-    public String getTime() {
-        return time;
-    }
-
-    public void setTime(String time) {
-        this.time = time;
-    }
-    public Integer getPrice() {
-        return price;
-    }
-
-    public void setPrice(Integer price) {
-        this.price = price;
-    }
-    public String getCardNo() {
-        return cardNo;
-    }
-
-    public void setCardNo(String cardNo) {
-        this.cardNo = cardNo;
-    }
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-    public String getSeatNo() {
-        return seatNo;
-    }
-
-    public void setSeatNo(String seatNo) {
-        this.seatNo = seatNo;
-    }
-
 
 }
+
 
 ```
 **Ticket 서비스의 PolicyHandler.java**
 ```java
-package movie;
-
-import movie.config.kafka.KafkaProcessor;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.stream.annotation.StreamListener;
-import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.stereotype.Service;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
-
-
-@Service
-public class PolicyHandler{
-    @Autowired TicketRepository ticketRepository;
-
-    @StreamListener(KafkaProcessor.INPUT)
-    public void wheneverReserved_Ticket(@Payload Reserved reserved){
-
-        if(!reserved.validate()) return;
-
-        System.out.println("\n\n##### listener Ticket : " + reserved.toJson() + "\n\n");
-
-
-        // Sample Logic // ticket 데이터 저장 
-        Ticket ticket = new Ticket();
-        ticket.setMovie(reserved.getMovie());
-        //ticket.setPayId(reserved.getId());
-        ticket.setReservationId(reserved.getId());
-        ticket.setSeatNo(reserved.getSeatNo());
-        ticket.setStatus(reserved.getStatus());
-        ticket.setTheater(reserved.getTheater());
-        ticket.setTime(reserved.getTime());
-        ticket.setUserid(reserved.getUserid());
-        ticketRepository.save(ticket);
-
-        // ticket 데이터 저장 
-    }
-
-
-    @StreamListener(KafkaProcessor.INPUT)
-    public void whenPayed__Ticket(@Payload Payed payed) {
-        try {
-            if (!payed.validate()) return;
-                // view 객체 조회
-
-                    List<Ticket> ticketList = ticketRepository.findByReservationId(payed.getReservationId());
-                    for(Ticket ticket : ticketList){
-                    // view 객체에 이벤트의 eventDirectValue 를 set 함
-                    ticket.setPayId(payed.getId());
-                    ticket.setStatus(payed.getStatus());
-                // view 레파지 토리에 save
-                ticketRepository.save(ticket);
-                }
-
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-    }
-
-
-    @StreamListener(KafkaProcessor.INPUT)
-    public void wheneverCanceledPay_CancelTicket(@Payload CanceledReservation canceledReservation){
-      
-        try {
-            if (!canceledReservation.validate()) return;
-                // view 객체 조회
-
-                    List<Ticket> ticketList = ticketRepository.findByReservationId(canceledReservation.getId());
-                    for(Ticket ticket : ticketList){
-                    // view 객체에 이벤트의 eventDirectValue 를 set 함
-                    ticket.setStatus(canceledReservation.getStatus());
-                // view 레파지 토리에 save
-                ticketRepository.save(ticket);
-                }
-
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-        
-    }
-
-
-    @StreamListener(KafkaProcessor.INPUT)
-    public void whatever(@Payload String eventString){}
 
 
 }
@@ -449,118 +290,7 @@ public class PolicyHandler{
 
 **Ticket 서비스의 Ticket.java**
 ```java
-package movie;
 
-import javax.persistence.*;
-import org.springframework.beans.BeanUtils;
-import java.util.List;
-import java.util.Date;
-
-@Entity
-@Table(name="Ticket_table")
-public class Ticket {
-
-    @Id
-    @GeneratedValue(strategy=GenerationType.AUTO)
-    private Long id;
-    private Long reservationId;
-    private Long payId;
-    private String userid;
-    private String movie;
-    private String theater;
-    private String time;
-    private String seatNo;
-    private String status;
-
-    @PostPersist
-    public void onPostPersist(){
-        Ticketed ticketed = new Ticketed();
-        BeanUtils.copyProperties(this, ticketed);
-        ticketed.publishAfterCommit();
-
-    }
-
-    @PostUpdate
-    public void onPostUpdate(){
-        Ticketed ticketed = new Ticketed();
-        BeanUtils.copyProperties(this, ticketed);
-        ticketed.publishAfterCommit();
-
-    }
-
-    @PreRemove
-    public void onPreRemove(){
-        CanceledTicket canceledTicket = new CanceledTicket();
-        BeanUtils.copyProperties(this, canceledTicket);
-        canceledTicket.publishAfterCommit();
-
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-    public Long getReservationId() {
-        return reservationId;
-    }
-
-    public void setReservationId(Long reservationId) {
-        this.reservationId = reservationId;
-    }
-    public Long getPayId() {
-        return payId;
-    }
-
-    public void setPayId(Long payId) {
-        this.payId = payId;
-    }
-    public String getUserid() {
-        return userid;
-    }
-
-    public void setUserid(String userid) {
-        this.userid = userid;
-    }
-    public String getMovie() {
-        return movie;
-    }
-
-    public void setMovie(String movie) {
-        this.movie = movie;
-    }
-    public String getTheater() {
-        return theater;
-    }
-
-    public void setTheater(String theater) {
-        this.theater = theater;
-    }
-    public String getTime() {
-        return time;
-    }
-
-    public void setTime(String time) {
-        this.time = time;
-    }
-    public String getSeatNo() {
-        return seatNo;
-    }
-
-    public void setSeatNo(String seatNo) {
-        this.seatNo = seatNo;
-    }
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-
-}
 
 ```
 
