@@ -277,20 +277,169 @@ public class Approval {
 
 
 ```
-**Ticket 서비스의 PolicyHandler.java**
+**Mycourt 서비스의 MycourtViewHandler.java**
 ```java
+package wimbledontenniscourt;
 
+import wimbledontenniscourt.config.kafka.KafkaProcessor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.stream.annotation.StreamListener;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class MycourtViewHandler {
+
+
+    @Autowired
+    private MycourtRepository mycourtRepository;
+
+    @StreamListener(KafkaProcessor.INPUT)
+    public void whenReserved_then_CREATE_1 (@Payload Reserved reserved) {
+        try {
+
+            if (!reserved.validate()) return;
+
+            // view 객체 생성
+            Mycourt mycourt = new Mycourt();
+            // view 객체에 이벤트의 Value 를 set 함
+            mycourt.setReservationId(reserved.getId());
+            mycourt.setCourtName(reserved.getCourtName());
+            mycourt.setPlayerName(reserved.getPlayerName());
+            mycourt.setTime(reserved.getTime());
+            mycourt.setStatus(reserved.getStatus());
+            // view 레파지 토리에 save
+            mycourtRepository.save(mycourt);
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+
+    @StreamListener(KafkaProcessor.INPUT)
+    public void whenApproved_then_UPDATE_1(@Payload Approved approved) {
+        try {
+            if (!approved.validate()) return;
+                // view 객체 조회
+                System.out.println("\n\n##### listener UpdateCourt view handler : " + approved.toJson() + "\n\n");
+
+                    List<Mycourt> mycourtList = mycourtRepository.findByReservationId(approved.getReservationId());
+                    for(Mycourt mycourt : mycourtList){
+                    // view 객체에 이벤트의 eventDirectValue 를 set 함
+                    mycourt.setApprovalId(approved.getId());
+                    mycourt.setStatus(approved.getStatus());
+                // view 레파지 토리에 save
+                mycourtRepository.save(mycourt);
+                }
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+    @StreamListener(KafkaProcessor.INPUT)
+    public void whenCancledReservation_then_UPDATE_2(@Payload CancledReservation cancledReservation) {
+        try {
+            if (!cancledReservation.validate()) return;
+                // view 객체 조회
+
+                    List<Mycourt> mycourtList = mycourtRepository.findByReservationId(cancledReservation.getId());
+                    for(Mycourt mycourt : mycourtList){
+                    // view 객체에 이벤트의 eventDirectValue 를 set 함
+                    mycourt.setStatus(cancledReservation.getStatus());
+                // view 레파지 토리에 save
+                mycourtRepository.save(mycourt);
+                }
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
 
 }
-
 
 ```
 
 
 
-**Ticket 서비스의 Ticket.java**
+**Mycourt 서비스의 Mycourt.java**
 ```java
 
+package wimbledontenniscourt;
+
+import javax.persistence.*;
+import java.util.List;
+
+@Entity
+@Table(name="Mycourt_table")
+public class Mycourt {
+
+        @Id
+        @GeneratedValue(strategy=GenerationType.AUTO)
+        private Long id;
+        private Long reservationId;
+        private Long approvalId;
+        private String courtName;
+        private String playerName;
+        private String time;
+        private String status;
+
+
+        public Long getId() {
+            return id;
+        }
+
+        public void setId(Long id) {
+            this.id = id;
+        }
+        public Long getReservationId() {
+            return reservationId;
+        }
+
+        public void setReservationId(Long reservationId) {
+            this.reservationId = reservationId;
+        }
+        public Long getApprovalId() {
+            return approvalId;
+        }
+
+        public void setApprovalId(Long approvalId) {
+            this.approvalId = approvalId;
+        }
+        public String getCourtName() {
+            return courtName;
+        }
+
+        public void setCourtName(String courtName) {
+            this.courtName = courtName;
+        }
+        public String getPlayerName() {
+            return playerName;
+        }
+
+        public void setPlayerName(String playerName) {
+            this.playerName = playerName;
+        }
+        public String getTime() {
+            return time;
+        }
+
+        public void setTime(String time) {
+            this.time = time;
+        }
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
+
+}
 
 ```
 
@@ -298,20 +447,16 @@ DDD 적용 후 REST API의 테스트를 통하여 정상적으로 동작하는 �
 
 - Resevation 서비스 호출 결과 
 
-![image](https://user-images.githubusercontent.com/86760622/130421675-11836da1-dbe8-48b5-a241-90a1855b7a96.png)
+![image](https://user-images.githubusercontent.com/86760622/132295477-363b257b-e417-4539-9764-9bf945449753.png)
 
-- Pay 서비스 호출 결과 
+- Approval 서비스 호출 결과 
 
-![image](https://user-images.githubusercontent.com/86760622/130421919-df745446-0c4d-42f6-9792-fcb399062966.png)
+![image](https://user-images.githubusercontent.com/86760622/132295553-ca6b582f-570f-4a3d-b383-4add2321be1c.png)
 
-- Ticket 서비스 호출 결과
 
-![image](https://user-images.githubusercontent.com/86760622/130422013-a3e30485-5869-4716-84fe-a3a3b49c3277.png)
+- Mycourt 서비스 호출 결과
 
-- MyReservation 서비스 호출 결과 
-
-![image](https://user-images.githubusercontent.com/86760622/130422106-b95d5fcf-92c8-438e-abdd-27250e32464c.png)
-
+![image](https://user-images.githubusercontent.com/86760622/132295583-1cc97f86-9cdf-45fd-8773-867ad24d1632.png)
 
 
 
@@ -329,22 +474,18 @@ spring:
   cloud:
     gateway:
       routes:
-        - id: Reservation
+        - id: reservation
           uri: http://localhost:8081
           predicates:
             - Path=/reservations/** 
-        - id: Pay
+        - id: approval
           uri: http://localhost:8082
           predicates:
-            - Path=/pays/** 
-        - id: Ticket
+            - Path=/approvals/** 
+        - id: mycourt
           uri: http://localhost:8083
           predicates:
-            - Path=/tickets/** 
-        - id: MyReservation
-          uri: http://localhost:8084
-          predicates:
-            - Path= /myReservations/**
+            - Path= /mycourts/**
       globalcors:
         corsConfigurations:
           '[/**]':
@@ -355,10 +496,16 @@ spring:
             allowedHeaders:
               - "*"
             allowCredentials: true
-```
-8080 port로 Reservation 서비스 정상 호출
 
-![image](https://user-images.githubusercontent.com/86760622/130422248-3f5dc3f6-7073-4b18-8ae5-50429dd94ab2.png)
+
+```
+8080 port로 Reservation, Approval, Mycourt 서비스 정상 호출
+
+![image](https://user-images.githubusercontent.com/86760622/132295762-7cfe7b17-cdee-4b2a-96c2-d152fbf14e3c.png)
+
+![image](https://user-images.githubusercontent.com/86760622/132295859-8b306d05-4bb6-4621-805e-cf599855c158.png)
+
+![image](https://user-images.githubusercontent.com/86760622/132295902-20e772eb-8ba3-4699-b575-12a8a373aea8.png)
 
 
 
@@ -366,47 +513,35 @@ spring:
 Materialized View를 구현하여, 타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이)도 내 서비스의 화면 구성과 잦은 조회가 가능하게 구현해 두었다. 
 본 프로젝트에서 View 역할은 MyReservation 서비스가 수행한다.
 
-예약 실행 후 Pay, Ticket, MyReservation 화면 - reserved 상태로 예약정보 등록
+예약 실행 후 Approval, Mycourt 화면 - reserved 상태로 예약정보 등록
 
-![image](https://user-images.githubusercontent.com/86760622/131072020-92613585-39b2-423f-abc9-69368fa82eed.png)
+![image](https://user-images.githubusercontent.com/86760622/132296041-95e5d409-2562-4401-931f-1ede271a3e77.png)
 
-![image](https://user-images.githubusercontent.com/86760622/131072063-a30f0933-8cc4-4526-8457-7772ec7da37e.png)
+![image](https://user-images.githubusercontent.com/86760622/132296134-c11bb73d-0dd6-4967-a275-cc352e5c5367.png)
 
-![image](https://user-images.githubusercontent.com/86760622/131072093-75d058e9-6e2f-4e66-a183-734ecbe0b420.png)
-
-![image](https://user-images.githubusercontent.com/86760622/131072108-27b77b3c-9a03-4236-804e-a153e3837a44.png)
-
-![image](https://user-images.githubusercontent.com/86760622/131072127-7c77461c-f778-4006-851b-ab7e6cd08c61.png)
+![image](https://user-images.githubusercontent.com/86760622/132296181-b3b662da-d1bd-4256-919a-50c88624df0a.png)
 
 
-결제 후 Ticket, MyReservation 화면 - payed 상태로 변경
 
-![image](https://user-images.githubusercontent.com/86760622/131072212-705a10a2-c3e6-4f6a-9786-de2f4c83cc20.png)
+승인 후 Mycourt 화면 - approved 상태로 변경
 
-![image](https://user-images.githubusercontent.com/86760622/131072274-f5781b82-35e8-44af-8ec8-5b317cd88fc2.png)
+![image](https://user-images.githubusercontent.com/86760622/132296512-f9474466-bab1-4350-a734-4e1be579240a.png)
 
-![image](https://user-images.githubusercontent.com/86760622/131072294-a034f344-587f-41e9-b56c-939804afd232.png)
-
-
-티켓팅 후 MyReservation 화면
-
-![image](https://user-images.githubusercontent.com/86760622/131072360-a72a3598-18a9-47c4-9176-415cda9ef812.png)
-
-![image](https://user-images.githubusercontent.com/86760622/131072373-6df6b6d4-7d59-4533-a199-39f697fa1c17.png)
+![image](https://user-images.githubusercontent.com/86760622/132296573-4b4bac3c-e09c-4570-8078-dfce5742ee2b.png)
 
 
-예약취소 후 Pay, Ticket, MyReservation 화면 - 예약은 삭제되며 각 서비스의 상태가 Canceled Reservation 상태로 변경됨
 
-![image](https://user-images.githubusercontent.com/86760622/131072504-23f52839-b8fc-446b-8769-0bc2be8bf525.png)
+예약취소 후 Approval, Mycourt 화면 - Resevation.Mycourt서비스의 Canceled Reservation 상태로 변경되고 Approval은 삭제됨
 
-![image](https://user-images.githubusercontent.com/86760622/131072520-545e9b28-a3e5-4150-a5f1-08fc31d32425.png)
+![image](https://user-images.githubusercontent.com/86760622/132296883-12364169-48af-4e7f-b650-e31e07d3dc35.png)
 
-![image](https://user-images.githubusercontent.com/86760622/131072538-a2888d11-54bc-4d5b-8f87-1cbde344f348.png)
+![image](https://user-images.githubusercontent.com/86760622/132296930-b4f56477-89b9-40a5-b92c-91be02f269f6.png)
 
-![image](https://user-images.githubusercontent.com/86760622/131072572-b57b3ee6-f198-489f-af8c-c61cd5f3941a.png)
+![image](https://user-images.githubusercontent.com/86760622/132296991-fb5bb789-2673-46e3-881e-3e98833b2cc7.png)
 
 
-위와 같이 예약을 하게되면 Reservation > Pay > Ticket > MyReservation로 예약이 Assigned 되고
+
+위와 같이 예약을 하게되면 Reservation > Approval > Mycourt로 예약이 Assigned 되고
 
 예약 취소가 되면 Status가 Cancelled Reservation로 Update 되는 것을 볼 수 있다.
 
@@ -419,16 +554,17 @@ Reservation 서비스의 DB와 MyReservation의 DB를 다른 DB를 사용하여 
 
 **Reservation의 pom.xml DB 설정 코드**
 
-![image](https://user-images.githubusercontent.com/86760622/131057448-457e2423-f202-4582-b820-65c4d21e4b68.png)
+![image](https://user-images.githubusercontent.com/86760622/132297146-5db8c85d-3bcf-4916-ad55-6495c8a958d6.png)
 
-**MyReservation의 pom.xml DB 설정 코드**
+**Mycourt의 pom.xml DB 설정 코드**
 
-![image](https://user-images.githubusercontent.com/86760622/131057400-b019383d-5444-4256-8f8f-9002d5eca14f.png)
+![image](https://user-images.githubusercontent.com/86760622/132297197-c916f675-207f-4964-9b7b-16cc87fdbd1b.png)
+
 
 
 # 동기식 호출 과 Fallback 처리
 
-분석단계에서의 조건 중 하나로 예약(Reservation)와 결제(Pay)간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 
+분석단계에서의 조건 중 하나로 예약취소(Reservation)와 승인취소(Approval)간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 
 호출 프로토콜은 Rest Repository에 의해 노출되어있는 REST 서비스를 FeignClient를 이용하여 호출하도록 한다.
 
 **Reservation 서비스 내 external.PayService.java**
