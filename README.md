@@ -886,7 +886,7 @@ siege -c100 -t30S  -v --content-type "application/json" 'http://10.0.241.98:8080
 
 
 ## ConfigMap
-* MyReservation을 실행할 때 환경변수 사용하여 활성 프로파일을 설정한다.
+* mycourt 실행할 때 환경변수 사용하여 활성 프로파일을 설정한다.
 * Dockerfile 변경
 ```dockerfile
 FROM openjdk:8u212-jdk-alpine
@@ -911,34 +911,36 @@ kubectl create configmap profile-cm --from-literal=profile=docker
 ```
 kubectl get cm profile-cm -o yaml 
 ```
-![configmap](https://user-images.githubusercontent.com/53825723/131068300-7691fb19-bed0-4277-b535-1e53e0fcf0a7.JPG)
+![image](https://user-images.githubusercontent.com/86760622/132315443-e991f357-3236-4f09-a991-4ca02b08b4bb.png)
+
+
 
 * 다시 배포한다.
 ```
 mvn package
-docker build -t user1919.azurecr.io/myreservation .
-docker push user1919.azurecr.io/myreservation
+docker build -t user01acr1.azurecr.io/mycourt .
+docker push user01acr1.azurecr.io/mycourt
 kubectl apply -f kubernetes
 ```
 
 * pod의 로그 확인
 ```
-kubectl logs myreservation-5fd5475c4d-9bkzd
+kubectl logs -f pod/mycourt-9b5ff558f-nt6q6
 ```
-![configmapapplication로그](https://user-images.githubusercontent.com/53825723/131068733-3eed09a3-0af2-422a-a77d-67c6312b0647.JPG)
+![image](https://user-images.githubusercontent.com/86760622/132316105-ba394702-2186-428a-9a85-f4fa64f19acc.png)
 
 
 * pod의 sh에서 환경변수 확인
 ```
-kubectl exec myreservation-5fd5475c4d-9bkzd -it -- sh
+kubectl exec mycourt-9b5ff558f-nt6q6 -it -- sh
 ```
-![configmapcontainer로그](https://user-images.githubusercontent.com/53825723/131068737-668acff9-33cc-4716-af9c-23d33af33e0d.JPG)
+![image](https://user-images.githubusercontent.com/86760622/132316378-c826b679-af1c-4475-a370-90050974b7d3.png)
 
 
 ## 오토스케일 아웃
 * 앞서 서킷 브레이커(CB) 는 시스템을 안정되게 운영할 수 있게 해줬지만 사용자의 요청을 100% 받아들여주지 못했기 때문에 이에 대한 보완책으로 자동화된 확장 기능을 적용하고자 한다.
 
-*  myReservation 서비스 deployment.yml 설정
+*  mycourt 서비스 deployment.yml 설정
 ```
         resources:
             limits:
@@ -951,12 +953,13 @@ kubectl exec myreservation-5fd5475c4d-9bkzd -it -- sh
 * Order 서비스에 대한 replica 를 동적으로 늘려주도록 HPA 를 설정한다. 설정은 CPU 사용량이 15프로를 넘어서면 replica 를 10개까지 늘려준다
 
 ```
-kubectl autoscale deployment myreservation --cpu-percent=15 --min=1 --max=10
+kubectl autoscale deployment mycourt --cpu-percent=15 --min=1 --max=10
 ```
 ```
 kubectl get hpa
 ```
-![hpa적용확인](https://user-images.githubusercontent.com/53825723/131067613-81203ccb-1325-4af8-bcc3-aeea62990a70.JPG)
+![image](https://user-images.githubusercontent.com/86760622/132316724-e596ab19-5f97-4a5a-aa65-4294a08a2e43.png)
+
 
 * siege.yaml
 ```
@@ -979,12 +982,12 @@ kubectl apply -f siege.yaml
 * siege를 활용해서 워크로드를 1000명, 1분간 걸어준다. (Cloud 내 siege pod에서 부하줄 것)
 ```
 kubectl exec -it pod/siege -c siege -- /bin/bash
-siege -c1000 -t60S  -v http://myreservation:8080/myReservations
+siege -c1000 -t60S  -v http://mycourt:8080/mycourts
 ```
 
 * 오토스케일이 어떻게 되고 있는지 모니터링을 걸어둔다
 ```
-kubectl get deploy myreservation -w
+kubectl get deploy mycourt -w
 ```
 ![hpaDelploy수변경전](https://user-images.githubusercontent.com/53825723/131067624-43570d7e-354a-43fe-871b-cc7a8604b1b7.JPG)
 ```
