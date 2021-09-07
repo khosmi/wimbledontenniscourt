@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: approval
-          image: username/approval:latest
+          image: user01acr1.azurecr.io/approval:latest
           ports:
             - containerPort: 8080
           readinessProbe:

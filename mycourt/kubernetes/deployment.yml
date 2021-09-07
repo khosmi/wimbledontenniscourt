@@ -16,7 +16,7 @@ spec:
     spec:
       containers:
         - name: mycourt
-          image: username/mycourt:latest
+          image: user01acr1.azurecr.io/mycourt:latest
           ports:
             - containerPort: 8080
           readinessProbe:
