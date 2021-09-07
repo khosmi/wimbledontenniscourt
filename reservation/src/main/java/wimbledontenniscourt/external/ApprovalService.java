@@ -14,5 +14,9 @@ public interface ApprovalService {
     @RequestMapping(method= RequestMethod.DELETE, path="/approvals/{id}")
     public void cancelApproval(@PathVariable long id);
 
+    @RequestMapping(method= RequestMethod.POST, path="/approvals")
+    public void createApproval(@RequestBody Approval approval);
+
 }
+
 

@@ -26,7 +26,7 @@ public class PolicyHandler{
         approval.setReservationId(reserved.getId());
         approval.setTime(reserved.getTime());
         approval.setStatus(reserved.getStatus());
-        approvalRepository.save(approval);
+        //approvalRepository.save(approval);
 
     }
 

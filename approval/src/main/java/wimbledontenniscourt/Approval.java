@@ -20,6 +20,13 @@ public class Approval {
 
     @PostPersist
     public void onPostPersist(){
+
+        try {
+            Thread.currentThread().sleep((long) (1000 + Math.random() * 220));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+        
     }
     @PostUpdate
     public void onPostUpdate(){

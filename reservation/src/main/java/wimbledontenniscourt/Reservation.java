@@ -23,6 +23,10 @@ public class Reservation {
         BeanUtils.copyProperties(this, reserved);
         reserved.publishAfterCommit();
 
+        wimbledontenniscourt.external.Approval approval = new wimbledontenniscourt.external.Approval();
+        ReservationApplication.applicationContext.getBean(wimbledontenniscourt.external.ApprovalService.class)
+            .createApproval(approval);
+
     }
     @PreUpdate
     public void onPreUpdate(){
