@@ -809,8 +809,8 @@ hystrix:
 ```
 // Reservation 서비스 ApprovalService.java
 
-@FeignClient(name="approval", url="${api.url.pay}", fallback=ApprovalServiceImpl.class)
-//@FeignClient(name="approval", url="${api.url.pay}")
+//@FeignClient(name="approval", url="${api.url.pay}", fallback=ApprovalServiceImpl.class)
+@FeignClient(name="approval", url="${api.url.pay}")   // fallback 제외
 public interface ApprovalService {
     @RequestMapping(method= RequestMethod.DELETE, path="/approvals/{id}")
     public void cancelApproval(@PathVariable long id);
@@ -868,13 +868,20 @@ spec:
 /home/project/tennis/siege/kubectl apply -f siege.yaml
 ```
 
-* 부하테스터 siege 툴을 통한 서킷 브레이커 동작 확인: 동시사용자 100명 60초 동안 실시
+* 부하테스터 siege 툴을 통한 서킷 브레이커 동작 확인: 동시사용자 100명 30초 동안 실시
+* --> fallback 미설정시 오류 발생
 ```
 kubectl exec -it pod/siege -c siege -- /bin/bash
 siege -c100 -t30S  -v --content-type "application/json" 'http://10.0.241.98:8080/reservations PATCH {"status":"cancled reservation"}'
 ```
-![image](https://user-images.githubusercontent.com/86760528/131079671-40199483-9c22-42fc-8fb3-0dbc8a52b183.png)
-![image](https://user-images.githubusercontent.com/86760528/131079931-b61cd3fa-44ac-42ea-9624-c2fa7b32ff69.png)
+
+![image](https://user-images.githubusercontent.com/86760622/132310761-f7b4bdc8-77ef-4c92-93e6-ea647e34b6c5.png)
+
+* fallback 설정 후 다시 부하테스트 수행함  --> 100% 로 응답 수행되며, 서비스 불가 메세지 출력됨
+
+![image](https://user-images.githubusercontent.com/86760622/132314955-e9fc2d9b-6fc6-48bf-a255-565121161a24.png)
+
+![image](https://user-images.githubusercontent.com/86760622/132315098-543c2b90-95b7-4766-be23-f72775f862ff.png)
 
 
 
