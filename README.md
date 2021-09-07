@@ -567,9 +567,10 @@ Reservation 서비스의 DB와 MyReservation의 DB를 다른 DB를 사용하여 
 분석단계에서의 조건 중 하나로 예약취소(Reservation)와 승인취소(Approval)간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 
 호출 프로토콜은 Rest Repository에 의해 노출되어있는 REST 서비스를 FeignClient를 이용하여 호출하도록 한다.
 
-**Reservation 서비스 내 external.PayService.java**
+**Reservation 서비스 내 external.ApprovalService.java**
 ```java
-package movie.external;
+
+package wimbledontenniscourt.external;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -579,12 +580,14 @@ import org.springframework.web.bind.annotation.RequestMethod;
 
 import java.util.Date;
 
-@FeignClient(name="Pay", url="${api.url.pay}")  // Pay Service URL 변수화 
-public interface PayService {
-    @RequestMapping(method= RequestMethod.GET, path="/pays")
-    public void pay(@RequestBody Pay pay);
+//@FeignClient(name="approval", url="${api.url.pay}", fallback=ApprovalServiceImpl.class)
+@FeignClient(name="approval", url="${api.url.pay}")
+public interface ApprovalService {
+    @RequestMapping(method= RequestMethod.DELETE, path="/approvals/{id}")
+    public void cancelApproval(@PathVariable long id);
 
 }
+
 
 ```
 
