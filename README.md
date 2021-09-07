@@ -1010,10 +1010,10 @@ kubectl get deploy mycourt -w
 
 ## 무정지 재배포 (Readiness Probe)
 * Readiness 설정이 없는 경우(deployment에서 Readiness 설정을 제거한 후 배포한다.)
-```yaml
+
+![image](https://user-images.githubusercontent.com/86760622/132352344-cbdc1779-0983-4bf1-9015-8c518043ccf8.png)
 
 
-```
 ```
 kubectl apply -f mycourt/kubernetes/deployment.yml
 ```
@@ -1029,33 +1029,34 @@ kubectl rollout restart deployment mycourt
 
 
 * siege의 결과 (일부 요청이 실패로 처리된다.)
-![무준단재배포 실패](https://user-images.githubusercontent.com/53825723/131072563-66762551-fd37-4131-b8f4-4996f2103179.JPG)
+
+![image](https://user-images.githubusercontent.com/86760622/132353476-cf10e4a5-57ea-4f85-a77f-dba02d2a5a06.png)
+
+
 
 * Readiness 설정이 있는 경우(deployment에서 Readiness 설정을 추가한 후 배포한다.)
+
+![image](https://user-images.githubusercontent.com/86760622/132353967-9f2487bd-558d-4588-8f6b-2edc8c4695d4.png)
+
+
 ```
-          readinessProbe:
-            httpGet:
-              path: '/actuator/health'
-              port: 8080
-            initialDelaySeconds: 10
-            timeoutSeconds: 2
-            periodSeconds: 5
-            failureThreshold: 10
-```
-```
-kubectl apply -n huijun -f MyReservation/kubernetes/deployment.yml -n huijun
+kubectl apply -f mycourt/kubernetes/deployment.yml
 ```
 * siege로 부하테스트를 한다. (워크로드 1000명, 1분)
 ```
 kubectl exec -it pod/siege -c siege -- /bin/bash
-siege -c1000 -t60S  -v http://myreservation:8080/myReservations
+siege -c1000 -t60S  -v http://mycourt:8080/mycourts
 ```
 
 * pod를 재배포 한다.
-kubectl rollout restart deployment myreservation  -n huijun
+kubectl rollout restart deployment mycourt
 
-* siege의 결과 ( 모든 요청이 성공한다.)
-![무준단재배포 성공](https://user-images.githubusercontent.com/53825723/131072557-7644e669-3b08-4cf3-b4bd-1399588f3332.JPG)
+* siege의 결과 ( POD 이 바뀌는 동안에도 모든 요청이 성공한다.)
+
+![image](https://user-images.githubusercontent.com/86760622/132354427-162c4664-1e27-44ec-82ca-62ad7d9ef918.png)
+
+![image](https://user-images.githubusercontent.com/86760622/132354476-46a930d3-1e85-423c-b136-a97f41954bf9.png)
+
 
 * Readiness 설정을 통해 무정지 재배포를 구현한다.
 
