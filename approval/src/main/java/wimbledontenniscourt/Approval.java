@@ -41,6 +41,20 @@ public class Approval {
 
     }
 
+    @PreRemove
+    public void onPreRemove(){
+        CancledApproval cancledApproval = new CancledApproval();
+        BeanUtils.copyProperties(this, cancledApproval);
+        //cancledApproval.publishAfterCommit();
+
+        try {
+            Thread.currentThread().sleep((long) (1000 + Math.random() * 220));
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        }
+
+    }
+
     public Long getId() {
         return id;
     }

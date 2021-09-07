@@ -13,8 +13,6 @@ import java.util.Date;
 public interface ApprovalService {
     @RequestMapping(method= RequestMethod.DELETE, path="/approvals/{id}")
     public void cancelApproval(@PathVariable long id);
-    //public void cancelApproval(@RequestBody Approval approval);
-    //public void cancelApproval(@PathVariable Long id, @RequestBody Approval approval);
 
 }
 

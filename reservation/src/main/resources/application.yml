@@ -97,6 +97,6 @@ hystrix:
   command:
     # 전역설정
     default:
-      #execution.isolation.thread.timeoutInMilliseconds: 610
-      execution.isolation.thread.timeoutInMilliseconds: 30000
+      execution.isolation.thread.timeoutInMilliseconds: 1500
+      #execution.isolation.thread.timeoutInMilliseconds: 30000
 # circuit breaker 설정 end
