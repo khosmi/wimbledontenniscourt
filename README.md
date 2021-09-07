@@ -989,24 +989,25 @@ siege -c1000 -t60S  -v http://mycourt:8080/mycourts
 ```
 kubectl get deploy mycourt -w
 ```
-![hpaDelploy수변경전](https://user-images.githubusercontent.com/53825723/131067624-43570d7e-354a-43fe-871b-cc7a8604b1b7.JPG)
+![image](https://user-images.githubusercontent.com/86760622/132350504-8a96a50d-4f1c-4ac4-af31-d9e40a2f45a3.png)
 ```
  watch kubectl get pod
 ```
-![hpaPod수변경전](https://user-images.githubusercontent.com/53825723/131067628-d6870772-3008-4dde-80ec-2c471e29eb2d.JPG)
+![image](https://user-images.githubusercontent.com/86760622/132350603-15fa6070-6d64-49ed-b707-d8c9222a7b47.png)
 
 * 오토스케일 결과
 ```
-kubectl get deploy myreservation -w
+kubectl get deploy mycourt -w
 ```
 
 ![image](https://user-images.githubusercontent.com/86760622/132317328-025601c2-d1ad-4382-b55a-7b0dbcf45b81.png)
 
-![hpaDelploy수변경후](https://user-images.githubusercontent.com/53825723/131067792-e708da59-817b-4d6c-b27f-e7b0e2b26d1a.JPG)
+![image](https://user-images.githubusercontent.com/86760622/132351154-3ddd9c01-674c-4659-b2f0-045fd27f211e.png)
+
 ```
  watch kubectl get pod
 ```
-![hpaPod수변경후](https://user-images.githubusercontent.com/53825723/131067798-ceb2bd23-69e5-4d2f-835d-c8e80fc2bfe3.JPG)
+![image](https://user-images.githubusercontent.com/86760622/132351201-05982980-a1fa-4c4a-ab87-d4633deedec0.png)
 
 
 ## 무정지 재배포 (Readiness Probe)
