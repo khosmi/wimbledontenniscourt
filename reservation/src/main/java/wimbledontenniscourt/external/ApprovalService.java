@@ -8,8 +8,8 @@ import org.springframework.web.bind.annotation.RequestMethod;
 
 import java.util.Date;
 
-@FeignClient(name="approval", url="${api.url.pay}", fallback=ApprovalServiceImpl.class)
-//@FeignClient(name="approval", url="${api.url.pay}")
+//@FeignClient(name="approval", url="${api.url.pay}", fallback=ApprovalServiceImpl.class)
+@FeignClient(name="approval", url="${api.url.pay}")
 public interface ApprovalService {
     @RequestMapping(method= RequestMethod.DELETE, path="/approvals/{id}")
     public void cancelApproval(@PathVariable long id);
