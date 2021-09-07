@@ -999,6 +999,9 @@ kubectl get deploy mycourt -w
 ```
 kubectl get deploy myreservation -w
 ```
+
+![image](https://user-images.githubusercontent.com/86760622/132317328-025601c2-d1ad-4382-b55a-7b0dbcf45b81.png)
+
 ![hpaDelploy수변경후](https://user-images.githubusercontent.com/53825723/131067792-e708da59-817b-4d6c-b27f-e7b0e2b26d1a.JPG)
 ```
  watch kubectl get pod
