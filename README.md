@@ -593,27 +593,32 @@ public interface ApprovalService {
 
 **동작 확인**
 
-Pay 서비스 중지함
-![image](https://user-images.githubusercontent.com/86760622/131061678-fec8d91c-e3a8-413b-960b-9f904c5f604c.png)
+Approval 서비스 중지함
+
+![image](https://user-images.githubusercontent.com/86760622/132298317-be8e2093-e5ae-4fcf-bff2-6add2a48e8f3.png)
 
 
-예약시 Pay서비스 중지로 인해 예약 실패
-![image](https://user-images.githubusercontent.com/86760622/131061604-77f5654c-23e4-4414-9224-d9e439ae3a32.png)
+예약취소시 Approval 서비스 중지로 인해 예약 실패
+
+![image](https://user-images.githubusercontent.com/86760622/132298549-78fcc13f-9f5f-4d6e-91ec-102cfedf07fa.png)
 
 
-Pay 서비스 재기동 후 예약 성공함
-![image](https://user-images.githubusercontent.com/86760622/131062000-cdcbb6b1-790c-4809-9ba9-d995202b45ff.png)
+Approval 서비스 재기동 후 예약취소 성공함
+
+![image](https://user-images.githubusercontent.com/86760622/132298821-bf98897a-a2bd-4995-81c2-29f6e63bf930.png)
 
 
-Pay 서비스 조회시 정상적으로 예약정보가 등록됨
+Approval 서비스 조회시 정상적으로 예약취소로 데이터가 삭제되어 있음
 
-![image](https://user-images.githubusercontent.com/86760622/131062120-8f310731-85b6-46c0-bdd6-caa6a22e2b09.png)
+![image](https://user-images.githubusercontent.com/86760622/132299216-f544bc71-5656-4922-8d6e-f8a4a6729774.png)
+
 
 Fallback 설정 
-- external.PayService.java
+- external.ApprovalService.java
+
 ```java
 
-package movie.external;
+package wimbledontenniscourt.external;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -623,48 +628,41 @@ import org.springframework.web.bind.annotation.RequestMethod;
 
 import java.util.Date;
 
-//@FeignClient(name="Pay", url="${api.url.pay}")  // Pay Service URL 변수화 
-@FeignClient(name="Pay", url="${api.url.pay}", fallback=PayServiceImpl.class)  // FALLBAK 설정
-public interface PayService {
-    @RequestMapping(method= RequestMethod.GET, path="/pays")
-    public void pay(@RequestBody Pay pay);
+@FeignClient(name="approval", url="${api.url.pay}", fallback=ApprovalServiceImpl.class)
+//@FeignClient(name="approval", url="${api.url.pay}")
+public interface ApprovalService {
+    @RequestMapping(method= RequestMethod.DELETE, path="/approvals/{id}")
+    public void cancelApproval(@PathVariable long id);
 
 }
 
+
 ```
-- external.PayServiceImpl.java
+- external.ApprovalServiceImpl.java
 ```java
-package movie.external;
+package wimbledontenniscourt.external;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
-
 @Service
-public class PayServiceImpl implements PayService {
-    
-    public void pay(Pay pay) {
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-
-    }
-
+public class ApprovalServiceImpl implements ApprovalService {
+        public void cancelApproval(long id){
+            System.out.println("\n\n ######  승인서비스 지연중입니다.    #######");
+            System.out.println("######  잠시 뒤에 다시 시도해주세요.     #######");
+            System.out.println("######  승인서비스 지연중입니다.    #######\n\n");
+        }
 }
 
 
 ```
 
 Fallback 결과(Pay service 종료 후 예약실행 추가 시)
-![image](https://user-images.githubusercontent.com/86760622/131062766-99148589-21f6-4817-8fdd-331620f49e40.png)
+
+![image](https://user-images.githubusercontent.com/86760622/132300121-28d2cdcb-3e4a-4e62-9b92-a3b89b9dcb10.png)
+
 
 # 운영
 
