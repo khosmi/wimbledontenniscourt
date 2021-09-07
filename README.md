@@ -5,47 +5,47 @@
 
 # 서비스 시나리오
 ### 기능적 요구사항
-1. 고객이 영화를 예약한다
-2. 고객이 결제한다.
-3. 고객이 영화표를 출력한다
-4. 나의 예약현황에서 예약현황 및 상태를 조회할 수 있다.
-5. 고객이 예약을 취소 할 수 있다.
-6. 고객이 예약을 취소하면 결제취소 및 티켓취소가 되어야 한다.
+1. wimbledon 테니스대회에 참가한 선수들이 연습을 위해 테니스 코트를 예약/승인하는 시스템이다.
+2. 참가선수들은 사용할 테니스 코르를 예약한다
+3. 테니스 코드 관리자는 예약을 승인한다
+5. 참가선수들은 나의 코트 예약현황에서 예약현황 및 상태를 조회할 수 있다.
+6. 참가선수들은 예약을 취소 할 수 있다.
+7. 참가선수들이 예약을 취소하면 코트사용 승인정보가 취소되어야 한다.
 
 ### 비기능적 요구사항
 1. 트랜젝션
-   1. 예약시 결제정보가 반드시 등록되어야 한다.  → REQ/RES Sync 호출
+   1. 예약 취소시 코트사용 승인정보가 반드시 등록되어야 한다.  → REQ/RES Sync 호출
 2. 장애격리
-   1. 티켓팅에서 장애가 발송해도 예약 및 결제는 가능해야 한다 →Async(event-driven), Eventual Consistency
-   1. 결재가 과중되면 결재를 잠시 후에 하도록 유도한다 → Circuit breaker, fallback
+   1. 승인시스템에서 장애가 발송해도 예약은 가능해야 한다 →Async(event-driven), Eventual Consistency
+   1. 승인취소가 과중되면 예약을 잠시 후에 하도록 유도한다 → Circuit breaker, fallback
 3. 성능
-   1. 고객이 예약상태를 주문내역조회에서 확인할 수 있어야 한다 → CQRS
+   1. 참가선수들이 코트예약상태를 확인할 수 있어야 한다 → CQRS
 
 
 # Event Storming 결과
-![image](https://user-images.githubusercontent.com/86760622/130416307-f2fc6258-6512-4a41-bb9e-787cb997ceae.png)
+![image](https://user-images.githubusercontent.com/86760622/132291700-fee10421-8b34-47f4-bcca-f3d811d6e1e6.png)
+
 
 
 # 헥사고날 아키텍처 다이어그램 도출
-![image](https://user-images.githubusercontent.com/86760613/131060623-ad62a938-b703-43d6-b23e-f6f6a317e942.png)
+![image](https://user-images.githubusercontent.com/86760622/132291981-d20fb41f-8799-4115-98b3-da1d42825ac3.png)
+
 
 # 구현
-분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다. (각각의 포트넘버는 8080 ~ 8084이다)
+분석/설계 단계에서 도출된 헥사고날 아키텍처에 따라, 구현한 각 서비스를 로컬에서 실행하는 방법은 아래와 같다. (각각의 포트넘버는 8080 ~ 8083이다)
 ```
 cd gateway
 mvn spring-boot:run
 
-cd Reservation
+cd reservation
 mvn spring-boot:run
 
-cd Pay
+cd approval
 mvn spring-boot:run
 
-cd Ticket
+cd mycourt
 mvn spring-boot:run
 
-cd MyReservation
-mvn spring-boot:run
 ```
 
 ## DDD 의 적용
@@ -54,7 +54,8 @@ Entity Pattern과 Repository Pattern을 적용하기 위해 Spring Data REST의 
 
 **Reservation 서비스의 Reservation.java**
 ```java 
-package movie;
+
+package wimbledontenniscourt;
 
 import javax.persistence.*;
 import org.springframework.beans.BeanUtils;
@@ -68,40 +69,33 @@ public class Reservation {
     @Id
     @GeneratedValue(strategy=GenerationType.AUTO)
     private Long id;
-    private String userid;
-    private String movie;
-    private String theater;
+    private String courtName;
+    private String playerName;
     private String time;
-    private String seatNo;
-    private Integer price;
-    private String cardNo;
     private String status;
 
     @PostPersist
     public void onPostPersist(){
         Reserved reserved = new Reserved();
         BeanUtils.copyProperties(this, reserved);
-        reserved.setStatus("Reserved");  // 예약상태 입력 by khos
         reserved.publishAfterCommit();
+
+    }
+    @PreUpdate
+    public void onPreUpdate(){
+        CancledReservation cancledReservation = new CancledReservation();
+        BeanUtils.copyProperties(this, cancledReservation);
+        cancledReservation.publishAfterCommit();
 
         //Following code causes dependency to external APIs
         // it is NOT A GOOD PRACTICE. instead, Event-Policy mapping is recommended.
 
-        movie.external.Pay pay = new movie.external.Pay();
+        wimbledontenniscourt.external.Approval approval = new wimbledontenniscourt.external.Approval();
         // mappings goes here
-        BeanUtils.copyProperties(this, pay); // Pay 값 설정 by khos
-        pay.setReservationId(reserved.getId());
-        pay.setStatus("reserved"); // Pay 값 설정 by khos
-        ReservationApplication.applicationContext.getBean(movie.external.PayService.class)
-            .pay(pay);
-
-    }
-    @PreRemove
-    public void onPreRemove(){
-        CanceledReservation canceledReservation = new CanceledReservation();
-        BeanUtils.copyProperties(this, canceledReservation);
-        canceledReservation.setStatus("Canceled Reservation");  // 예약상태 입력 by khos
-        canceledReservation.publishAfterCommit();
+        ReservationApplication.applicationContext.getBean(wimbledontenniscourt.external.ApprovalService.class)
+            //.cancelApproval(approval);
+            //.cancelApproval(this.getId(), approval);
+            .cancelApproval(this.getId());
 
     }
 
@@ -112,26 +106,19 @@ public class Reservation {
     public void setId(Long id) {
         this.id = id;
     }
-    public String getUserid() {
-        return userid;
+    public String getCourtName() {
+        return courtName;
     }
 
-    public void setUserid(String userid) {
-        this.userid = userid;
+    public void setCourtName(String courtName) {
+        this.courtName = courtName;
     }
-    public String getMovie() {
-        return movie;
-    }
-
-    public void setMovie(String movie) {
-        this.movie = movie;
-    }
-    public String getTheater() {
-        return theater;
+    public String getPlayerName() {
+        return playerName;
     }
 
-    public void setTheater(String theater) {
-        this.theater = theater;
+    public void setPlayerName(String playerName) {
+        this.playerName = playerName;
     }
     public String getTime() {
         return time;
@@ -139,27 +126,6 @@ public class Reservation {
 
     public void setTime(String time) {
         this.time = time;
-    }
-    public String getSeatNo() {
-        return seatNo;
-    }
-
-    public void setSeatNo(String seatNo) {
-        this.seatNo = seatNo;
-    }
-    public Integer getPrice() {
-        return price;
-    }
-
-    public void setPrice(Integer price) {
-        this.price = price;
-    }
-    public String getCardNo() {
-        return cardNo;
-    }
-
-    public void setCardNo(String cardNo) {
-        this.cardNo = cardNo;
     }
     public String getStatus() {
         return status;
@@ -173,11 +139,12 @@ public class Reservation {
 
 ```
 
-**Pay 서비스의 PolicyHandler.java**
+**Approval 서비스의 PolicyHandler.java**
 ```java
-package movie;
 
-import movie.config.kafka.KafkaProcessor;
+package wimbledontenniscourt;
+
+import wimbledontenniscourt.config.kafka.KafkaProcessor;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -185,254 +152,26 @@ import org.springframework.cloud.stream.annotation.StreamListener;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
-
 @Service
 public class PolicyHandler{
-    @Autowired PayRepository payRepository;
+    @Autowired ApprovalRepository approvalRepository;
 
     @StreamListener(KafkaProcessor.INPUT)
-    public void wheneverCanceledReservation_CancelPay(@Payload CanceledReservation canceledReservation){
-
-         try {
-            if (!canceledReservation.validate()) return;
-                // view 객체 조회
-
-                    List<Pay> payList = payRepository.findByReservationId(canceledReservation.getId());
-                    for(Pay pay : payList){
-                    // view 객체에 이벤트의 eventDirectValue 를 set 함
-                    pay.setStatus(canceledReservation.getStatus());
-                // view 레파지 토리에 save
-                payRepository.save(pay);
-                }
-
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-
-    }
-
-
-    @StreamListener(KafkaProcessor.INPUT)
-    public void whatever(@Payload String eventString){}
-
-}
-
-```
-
-
-**Pay 서비스의 Pay.java**
-```java
-package movie;
-
-import javax.persistence.*;
-import org.springframework.beans.BeanUtils;
-import java.util.List;
-import java.util.Date;
-
-@Entity
-@Table(name="Pay_table")
-public class Pay {
-
-    @Id
-    @GeneratedValue(strategy=GenerationType.AUTO)
-    private Long id;
-    private Long reservationId;
-    private String userid;
-    private String movie;
-    private String theater;
-    private String time;
-    private Integer price;
-    private String cardNo;
-    private String status;
-    private String seatNo;
-
-    @PostPersist
-    public void onPostPersist(){
-        Payed payed = new Payed();
-        BeanUtils.copyProperties(this, payed);
-        payed.publishAfterCommit();
-
-    }
-
-    @PostUpdate
-    public void onPostUpdate(){
-        Payed payed = new Payed();
-        BeanUtils.copyProperties(this, payed);
-        payed.publishAfterCommit();
-    }
-
-    @PreRemove
-    public void onPreRemove(){
-        CanceledPay canceledPay = new CanceledPay();
-        BeanUtils.copyProperties(this, canceledPay);
-        canceledPay.setStatus("Canceled Payment");  // 상태 변경 by khos
-        canceledPay.publishAfterCommit();
-
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-    public Long getReservationId() {
-        return reservationId;
-    }
-
-    public void setReservationId(Long reservationId) {
-        this.reservationId = reservationId;
-    }
-    public String getUserid() {
-        return userid;
-    }
-
-    public void setUserid(String userid) {
-        this.userid = userid;
-    }
-    public String getMovie() {
-        return movie;
-    }
-
-    public void setMovie(String movie) {
-        this.movie = movie;
-    }
-    public String getTheater() {
-        return theater;
-    }
-
-    public void setTheater(String theater) {
-        this.theater = theater;
-    }
-    public String getTime() {
-        return time;
-    }
-
-    public void setTime(String time) {
-        this.time = time;
-    }
-    public Integer getPrice() {
-        return price;
-    }
-
-    public void setPrice(Integer price) {
-        this.price = price;
-    }
-    public String getCardNo() {
-        return cardNo;
-    }
-
-    public void setCardNo(String cardNo) {
-        this.cardNo = cardNo;
-    }
-    public String getStatus() {
-        return status;
-    }
-
-    public void setStatus(String status) {
-        this.status = status;
-    }
-    public String getSeatNo() {
-        return seatNo;
-    }
-
-    public void setSeatNo(String seatNo) {
-        this.seatNo = seatNo;
-    }
-
-
-}
-
-```
-**Ticket 서비스의 PolicyHandler.java**
-```java
-package movie;
-
-import movie.config.kafka.KafkaProcessor;
-import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cloud.stream.annotation.StreamListener;
-import org.springframework.messaging.handler.annotation.Payload;
-import org.springframework.stereotype.Service;
-
-import java.io.IOException;
-import java.util.List;
-import java.util.Optional;
-
-
-@Service
-public class PolicyHandler{
-    @Autowired TicketRepository ticketRepository;
-
-    @StreamListener(KafkaProcessor.INPUT)
-    public void wheneverReserved_Ticket(@Payload Reserved reserved){
+    public void wheneverReserved_Receive(@Payload Reserved reserved){
 
         if(!reserved.validate()) return;
 
-        System.out.println("\n\n##### listener Ticket : " + reserved.toJson() + "\n\n");
+        System.out.println("\n\n##### listener Receive : " + reserved.toJson() + "\n\n");
 
+        // Sample Logic //
+        Approval approval = new Approval();
+        approval.setCourtName(reserved.getCourtName());
+        approval.setPlayerName(reserved.getPlayerName());
+        approval.setReservationId(reserved.getId());
+        approval.setTime(reserved.getTime());
+        approval.setStatus(reserved.getStatus());
+        approvalRepository.save(approval);
 
-        // Sample Logic // ticket 데이터 저장 
-        Ticket ticket = new Ticket();
-        ticket.setMovie(reserved.getMovie());
-        //ticket.setPayId(reserved.getId());
-        ticket.setReservationId(reserved.getId());
-        ticket.setSeatNo(reserved.getSeatNo());
-        ticket.setStatus(reserved.getStatus());
-        ticket.setTheater(reserved.getTheater());
-        ticket.setTime(reserved.getTime());
-        ticket.setUserid(reserved.getUserid());
-        ticketRepository.save(ticket);
-
-        // ticket 데이터 저장 
-    }
-
-
-    @StreamListener(KafkaProcessor.INPUT)
-    public void whenPayed__Ticket(@Payload Payed payed) {
-        try {
-            if (!payed.validate()) return;
-                // view 객체 조회
-
-                    List<Ticket> ticketList = ticketRepository.findByReservationId(payed.getReservationId());
-                    for(Ticket ticket : ticketList){
-                    // view 객체에 이벤트의 eventDirectValue 를 set 함
-                    ticket.setPayId(payed.getId());
-                    ticket.setStatus(payed.getStatus());
-                // view 레파지 토리에 save
-                ticketRepository.save(ticket);
-                }
-
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-    }
-
-
-    @StreamListener(KafkaProcessor.INPUT)
-    public void wheneverCanceledPay_CancelTicket(@Payload CanceledReservation canceledReservation){
-      
-        try {
-            if (!canceledReservation.validate()) return;
-                // view 객체 조회
-
-                    List<Ticket> ticketList = ticketRepository.findByReservationId(canceledReservation.getId());
-                    for(Ticket ticket : ticketList){
-                    // view 객체에 이벤트의 eventDirectValue 를 set 함
-                    ticket.setStatus(canceledReservation.getStatus());
-                // view 레파지 토리에 save
-                ticketRepository.save(ticket);
-                }
-
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-        
     }
 
 
@@ -442,14 +181,13 @@ public class PolicyHandler{
 
 }
 
-
 ```
 
 
-
-**Ticket 서비스의 Ticket.java**
+**Approval 서비스의 Approval.java**
 ```java
-package movie;
+
+package wimbledontenniscourt;
 
 import javax.persistence.*;
 import org.springframework.beans.BeanUtils;
@@ -457,42 +195,38 @@ import java.util.List;
 import java.util.Date;
 
 @Entity
-@Table(name="Ticket_table")
-public class Ticket {
+@Table(name="Approval_table")
+public class Approval {
 
     @Id
     @GeneratedValue(strategy=GenerationType.AUTO)
     private Long id;
-    private Long reservationId;
-    private Long payId;
-    private String userid;
-    private String movie;
-    private String theater;
+    private String courtName;
+    private String playerName;
     private String time;
-    private String seatNo;
     private String status;
+    private Long reservationId;
 
     @PostPersist
     public void onPostPersist(){
-        Ticketed ticketed = new Ticketed();
-        BeanUtils.copyProperties(this, ticketed);
-        ticketed.publishAfterCommit();
-
     }
-
     @PostUpdate
     public void onPostUpdate(){
-        Ticketed ticketed = new Ticketed();
-        BeanUtils.copyProperties(this, ticketed);
-        ticketed.publishAfterCommit();
 
-    }
-
-    @PreRemove
-    public void onPreRemove(){
-        CanceledTicket canceledTicket = new CanceledTicket();
-        BeanUtils.copyProperties(this, canceledTicket);
-        canceledTicket.publishAfterCommit();
+        System.out.println("\n\n##### STATUS : "+this.getStatus()+"\n\n");
+        if (this.getStatus().equals("approved")){
+            Approved approved = new Approved();
+            BeanUtils.copyProperties(this, approved);
+            approved.publishAfterCommit();
+            System.out.println("\n\n##### Approved Created : " + approved.toJson() + "\n\n");
+        }else if (this.getStatus().equals("cancled reservation")){
+            CancledApproval cancledApproval = new CancledApproval();
+            BeanUtils.copyProperties(this, cancledApproval);
+            cancledApproval.publishAfterCommit();
+            System.out.println("\n\n##### Approval Cancled : " + cancledApproval.toJson() + "\n\n");
+        }else{
+            System.out.println("\n\n##### STATUS IS NOT ACCEPTABLE!! : " + this.getStatus() + "\n\n");
+        }
 
     }
 
@@ -503,40 +237,19 @@ public class Ticket {
     public void setId(Long id) {
         this.id = id;
     }
-    public Long getReservationId() {
-        return reservationId;
+    public String getCourtName() {
+        return courtName;
     }
 
-    public void setReservationId(Long reservationId) {
-        this.reservationId = reservationId;
+    public void setCourtName(String courtName) {
+        this.courtName = courtName;
     }
-    public Long getPayId() {
-        return payId;
-    }
-
-    public void setPayId(Long payId) {
-        this.payId = payId;
-    }
-    public String getUserid() {
-        return userid;
+    public String getPlayerName() {
+        return playerName;
     }
 
-    public void setUserid(String userid) {
-        this.userid = userid;
-    }
-    public String getMovie() {
-        return movie;
-    }
-
-    public void setMovie(String movie) {
-        this.movie = movie;
-    }
-    public String getTheater() {
-        return theater;
-    }
-
-    public void setTheater(String theater) {
-        this.theater = theater;
+    public void setPlayerName(String playerName) {
+        this.playerName = playerName;
     }
     public String getTime() {
         return time;
@@ -545,13 +258,6 @@ public class Ticket {
     public void setTime(String time) {
         this.time = time;
     }
-    public String getSeatNo() {
-        return seatNo;
-    }
-
-    public void setSeatNo(String seatNo) {
-        this.seatNo = seatNo;
-    }
     public String getStatus() {
         return status;
     }
@@ -559,6 +265,179 @@ public class Ticket {
     public void setStatus(String status) {
         this.status = status;
     }
+    public Long getReservationId() {
+        return reservationId;
+    }
+
+    public void setReservationId(Long reservationId) {
+        this.reservationId = reservationId;
+    }
+
+}
+
+
+```
+**Mycourt 서비스의 MycourtViewHandler.java**
+```java
+package wimbledontenniscourt;
+
+import wimbledontenniscourt.config.kafka.KafkaProcessor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cloud.stream.annotation.StreamListener;
+import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+public class MycourtViewHandler {
+
+
+    @Autowired
+    private MycourtRepository mycourtRepository;
+
+    @StreamListener(KafkaProcessor.INPUT)
+    public void whenReserved_then_CREATE_1 (@Payload Reserved reserved) {
+        try {
+
+            if (!reserved.validate()) return;
+
+            // view 객체 생성
+            Mycourt mycourt = new Mycourt();
+            // view 객체에 이벤트의 Value 를 set 함
+            mycourt.setReservationId(reserved.getId());
+            mycourt.setCourtName(reserved.getCourtName());
+            mycourt.setPlayerName(reserved.getPlayerName());
+            mycourt.setTime(reserved.getTime());
+            mycourt.setStatus(reserved.getStatus());
+            // view 레파지 토리에 save
+            mycourtRepository.save(mycourt);
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+
+    @StreamListener(KafkaProcessor.INPUT)
+    public void whenApproved_then_UPDATE_1(@Payload Approved approved) {
+        try {
+            if (!approved.validate()) return;
+                // view 객체 조회
+                System.out.println("\n\n##### listener UpdateCourt view handler : " + approved.toJson() + "\n\n");
+
+                    List<Mycourt> mycourtList = mycourtRepository.findByReservationId(approved.getReservationId());
+                    for(Mycourt mycourt : mycourtList){
+                    // view 객체에 이벤트의 eventDirectValue 를 set 함
+                    mycourt.setApprovalId(approved.getId());
+                    mycourt.setStatus(approved.getStatus());
+                // view 레파지 토리에 save
+                mycourtRepository.save(mycourt);
+                }
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+    @StreamListener(KafkaProcessor.INPUT)
+    public void whenCancledReservation_then_UPDATE_2(@Payload CancledReservation cancledReservation) {
+        try {
+            if (!cancledReservation.validate()) return;
+                // view 객체 조회
+
+                    List<Mycourt> mycourtList = mycourtRepository.findByReservationId(cancledReservation.getId());
+                    for(Mycourt mycourt : mycourtList){
+                    // view 객체에 이벤트의 eventDirectValue 를 set 함
+                    mycourt.setStatus(cancledReservation.getStatus());
+                // view 레파지 토리에 save
+                mycourtRepository.save(mycourt);
+                }
+
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+    }
+
+}
+
+```
+
+
+
+**Mycourt 서비스의 Mycourt.java**
+```java
+
+package wimbledontenniscourt;
+
+import javax.persistence.*;
+import java.util.List;
+
+@Entity
+@Table(name="Mycourt_table")
+public class Mycourt {
+
+        @Id
+        @GeneratedValue(strategy=GenerationType.AUTO)
+        private Long id;
+        private Long reservationId;
+        private Long approvalId;
+        private String courtName;
+        private String playerName;
+        private String time;
+        private String status;
+
+
+        public Long getId() {
+            return id;
+        }
+
+        public void setId(Long id) {
+            this.id = id;
+        }
+        public Long getReservationId() {
+            return reservationId;
+        }
+
+        public void setReservationId(Long reservationId) {
+            this.reservationId = reservationId;
+        }
+        public Long getApprovalId() {
+            return approvalId;
+        }
+
+        public void setApprovalId(Long approvalId) {
+            this.approvalId = approvalId;
+        }
+        public String getCourtName() {
+            return courtName;
+        }
+
+        public void setCourtName(String courtName) {
+            this.courtName = courtName;
+        }
+        public String getPlayerName() {
+            return playerName;
+        }
+
+        public void setPlayerName(String playerName) {
+            this.playerName = playerName;
+        }
+        public String getTime() {
+            return time;
+        }
+
+        public void setTime(String time) {
+            this.time = time;
+        }
+        public String getStatus() {
+            return status;
+        }
+
+        public void setStatus(String status) {
+            this.status = status;
+        }
 
 }
 
@@ -568,20 +447,16 @@ DDD 적용 후 REST API의 테스트를 통하여 정상적으로 동작하는 �
 
 - Resevation 서비스 호출 결과 
 
-![image](https://user-images.githubusercontent.com/86760622/130421675-11836da1-dbe8-48b5-a241-90a1855b7a96.png)
+![image](https://user-images.githubusercontent.com/86760622/132295477-363b257b-e417-4539-9764-9bf945449753.png)
 
-- Pay 서비스 호출 결과 
+- Approval 서비스 호출 결과 
 
-![image](https://user-images.githubusercontent.com/86760622/130421919-df745446-0c4d-42f6-9792-fcb399062966.png)
+![image](https://user-images.githubusercontent.com/86760622/132295553-ca6b582f-570f-4a3d-b383-4add2321be1c.png)
 
-- Ticket 서비스 호출 결과
 
-![image](https://user-images.githubusercontent.com/86760622/130422013-a3e30485-5869-4716-84fe-a3a3b49c3277.png)
+- Mycourt 서비스 호출 결과
 
-- MyReservation 서비스 호출 결과 
-
-![image](https://user-images.githubusercontent.com/86760622/130422106-b95d5fcf-92c8-438e-abdd-27250e32464c.png)
-
+![image](https://user-images.githubusercontent.com/86760622/132295583-1cc97f86-9cdf-45fd-8773-867ad24d1632.png)
 
 
 
@@ -599,22 +474,18 @@ spring:
   cloud:
     gateway:
       routes:
-        - id: Reservation
+        - id: reservation
           uri: http://localhost:8081
           predicates:
             - Path=/reservations/** 
-        - id: Pay
+        - id: approval
           uri: http://localhost:8082
           predicates:
-            - Path=/pays/** 
-        - id: Ticket
+            - Path=/approvals/** 
+        - id: mycourt
           uri: http://localhost:8083
           predicates:
-            - Path=/tickets/** 
-        - id: MyReservation
-          uri: http://localhost:8084
-          predicates:
-            - Path= /myReservations/**
+            - Path= /mycourts/**
       globalcors:
         corsConfigurations:
           '[/**]':
@@ -625,10 +496,16 @@ spring:
             allowedHeaders:
               - "*"
             allowCredentials: true
-```
-8080 port로 Reservation 서비스 정상 호출
 
-![image](https://user-images.githubusercontent.com/86760622/130422248-3f5dc3f6-7073-4b18-8ae5-50429dd94ab2.png)
+
+```
+8080 port로 Reservation, Approval, Mycourt 서비스 정상 호출
+
+![image](https://user-images.githubusercontent.com/86760622/132295762-7cfe7b17-cdee-4b2a-96c2-d152fbf14e3c.png)
+
+![image](https://user-images.githubusercontent.com/86760622/132295859-8b306d05-4bb6-4621-805e-cf599855c158.png)
+
+![image](https://user-images.githubusercontent.com/86760622/132295902-20e772eb-8ba3-4699-b575-12a8a373aea8.png)
 
 
 
@@ -636,47 +513,35 @@ spring:
 Materialized View를 구현하여, 타 마이크로서비스의 데이터 원본에 접근없이(Composite 서비스나 조인SQL 등 없이)도 내 서비스의 화면 구성과 잦은 조회가 가능하게 구현해 두었다. 
 본 프로젝트에서 View 역할은 MyReservation 서비스가 수행한다.
 
-예약 실행 후 Pay, Ticket, MyReservation 화면 - reserved 상태로 예약정보 등록
+예약 실행 후 Approval, Mycourt 화면 - reserved 상태로 예약정보 등록
 
-![image](https://user-images.githubusercontent.com/86760622/131072020-92613585-39b2-423f-abc9-69368fa82eed.png)
+![image](https://user-images.githubusercontent.com/86760622/132296041-95e5d409-2562-4401-931f-1ede271a3e77.png)
 
-![image](https://user-images.githubusercontent.com/86760622/131072063-a30f0933-8cc4-4526-8457-7772ec7da37e.png)
+![image](https://user-images.githubusercontent.com/86760622/132296134-c11bb73d-0dd6-4967-a275-cc352e5c5367.png)
 
-![image](https://user-images.githubusercontent.com/86760622/131072093-75d058e9-6e2f-4e66-a183-734ecbe0b420.png)
-
-![image](https://user-images.githubusercontent.com/86760622/131072108-27b77b3c-9a03-4236-804e-a153e3837a44.png)
-
-![image](https://user-images.githubusercontent.com/86760622/131072127-7c77461c-f778-4006-851b-ab7e6cd08c61.png)
+![image](https://user-images.githubusercontent.com/86760622/132296181-b3b662da-d1bd-4256-919a-50c88624df0a.png)
 
 
-결제 후 Ticket, MyReservation 화면 - payed 상태로 변경
 
-![image](https://user-images.githubusercontent.com/86760622/131072212-705a10a2-c3e6-4f6a-9786-de2f4c83cc20.png)
+승인 후 Mycourt 화면 - approved 상태로 변경
 
-![image](https://user-images.githubusercontent.com/86760622/131072274-f5781b82-35e8-44af-8ec8-5b317cd88fc2.png)
+![image](https://user-images.githubusercontent.com/86760622/132296512-f9474466-bab1-4350-a734-4e1be579240a.png)
 
-![image](https://user-images.githubusercontent.com/86760622/131072294-a034f344-587f-41e9-b56c-939804afd232.png)
-
-
-티켓팅 후 MyReservation 화면
-
-![image](https://user-images.githubusercontent.com/86760622/131072360-a72a3598-18a9-47c4-9176-415cda9ef812.png)
-
-![image](https://user-images.githubusercontent.com/86760622/131072373-6df6b6d4-7d59-4533-a199-39f697fa1c17.png)
+![image](https://user-images.githubusercontent.com/86760622/132296573-4b4bac3c-e09c-4570-8078-dfce5742ee2b.png)
 
 
-예약취소 후 Pay, Ticket, MyReservation 화면 - 예약은 삭제되며 각 서비스의 상태가 Canceled Reservation 상태로 변경됨
 
-![image](https://user-images.githubusercontent.com/86760622/131072504-23f52839-b8fc-446b-8769-0bc2be8bf525.png)
+예약취소 후 Approval, Mycourt 화면 - Resevation.Mycourt서비스의 Canceled Reservation 상태로 변경되고 Approval은 삭제됨
 
-![image](https://user-images.githubusercontent.com/86760622/131072520-545e9b28-a3e5-4150-a5f1-08fc31d32425.png)
+![image](https://user-images.githubusercontent.com/86760622/132296883-12364169-48af-4e7f-b650-e31e07d3dc35.png)
 
-![image](https://user-images.githubusercontent.com/86760622/131072538-a2888d11-54bc-4d5b-8f87-1cbde344f348.png)
+![image](https://user-images.githubusercontent.com/86760622/132296930-b4f56477-89b9-40a5-b92c-91be02f269f6.png)
 
-![image](https://user-images.githubusercontent.com/86760622/131072572-b57b3ee6-f198-489f-af8c-c61cd5f3941a.png)
+![image](https://user-images.githubusercontent.com/86760622/132296991-fb5bb789-2673-46e3-881e-3e98833b2cc7.png)
 
 
-위와 같이 예약을 하게되면 Reservation > Pay > Ticket > MyReservation로 예약이 Assigned 되고
+
+위와 같이 예약을 하게되면 Reservation > Approval > Mycourt로 예약이 Assigned 되고
 
 예약 취소가 되면 Status가 Cancelled Reservation로 Update 되는 것을 볼 수 있다.
 
@@ -689,21 +554,23 @@ Reservation 서비스의 DB와 MyReservation의 DB를 다른 DB를 사용하여 
 
 **Reservation의 pom.xml DB 설정 코드**
 
-![image](https://user-images.githubusercontent.com/86760622/131057448-457e2423-f202-4582-b820-65c4d21e4b68.png)
+![image](https://user-images.githubusercontent.com/86760622/132297146-5db8c85d-3bcf-4916-ad55-6495c8a958d6.png)
 
-**MyReservation의 pom.xml DB 설정 코드**
+**Mycourt의 pom.xml DB 설정 코드**
 
-![image](https://user-images.githubusercontent.com/86760622/131057400-b019383d-5444-4256-8f8f-9002d5eca14f.png)
+![image](https://user-images.githubusercontent.com/86760622/132297197-c916f675-207f-4964-9b7b-16cc87fdbd1b.png)
+
 
 
 # 동기식 호출 과 Fallback 처리
 
-분석단계에서의 조건 중 하나로 예약(Reservation)와 결제(Pay)간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 
+분석단계에서의 조건 중 하나로 예약취소(Reservation)와 승인취소(Approval)간의 호출은 동기식 일관성을 유지하는 트랜잭션으로 처리하기로 하였다. 
 호출 프로토콜은 Rest Repository에 의해 노출되어있는 REST 서비스를 FeignClient를 이용하여 호출하도록 한다.
 
-**Reservation 서비스 내 external.PayService.java**
+**Reservation 서비스 내 external.ApprovalService.java**
 ```java
-package movie.external;
+
+package wimbledontenniscourt.external;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -713,38 +580,45 @@ import org.springframework.web.bind.annotation.RequestMethod;
 
 import java.util.Date;
 
-@FeignClient(name="Pay", url="${api.url.pay}")  // Pay Service URL 변수화 
-public interface PayService {
-    @RequestMapping(method= RequestMethod.GET, path="/pays")
-    public void pay(@RequestBody Pay pay);
+//@FeignClient(name="approval", url="${api.url.pay}", fallback=ApprovalServiceImpl.class)
+@FeignClient(name="approval", url="${api.url.pay}")
+public interface ApprovalService {
+    @RequestMapping(method= RequestMethod.DELETE, path="/approvals/{id}")
+    public void cancelApproval(@PathVariable long id);
 
 }
+
 
 ```
 
 **동작 확인**
 
-Pay 서비스 중지함
-![image](https://user-images.githubusercontent.com/86760622/131061678-fec8d91c-e3a8-413b-960b-9f904c5f604c.png)
+Approval 서비스 중지함
+
+![image](https://user-images.githubusercontent.com/86760622/132298317-be8e2093-e5ae-4fcf-bff2-6add2a48e8f3.png)
 
 
-예약시 Pay서비스 중지로 인해 예약 실패
-![image](https://user-images.githubusercontent.com/86760622/131061604-77f5654c-23e4-4414-9224-d9e439ae3a32.png)
+예약취소시 Approval 서비스 중지로 인해 예약 실패
+
+![image](https://user-images.githubusercontent.com/86760622/132298549-78fcc13f-9f5f-4d6e-91ec-102cfedf07fa.png)
 
 
-Pay 서비스 재기동 후 예약 성공함
-![image](https://user-images.githubusercontent.com/86760622/131062000-cdcbb6b1-790c-4809-9ba9-d995202b45ff.png)
+Approval 서비스 재기동 후 예약취소 성공함
+
+![image](https://user-images.githubusercontent.com/86760622/132298821-bf98897a-a2bd-4995-81c2-29f6e63bf930.png)
 
 
-Pay 서비스 조회시 정상적으로 예약정보가 등록됨
+Approval 서비스 조회시 정상적으로 예약취소로 데이터가 삭제되어 있음
 
-![image](https://user-images.githubusercontent.com/86760622/131062120-8f310731-85b6-46c0-bdd6-caa6a22e2b09.png)
+![image](https://user-images.githubusercontent.com/86760622/132299216-f544bc71-5656-4922-8d6e-f8a4a6729774.png)
+
 
 Fallback 설정 
-- external.PayService.java
+- external.ApprovalService.java
+
 ```java
 
-package movie.external;
+package wimbledontenniscourt.external;
 
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -754,48 +628,41 @@ import org.springframework.web.bind.annotation.RequestMethod;
 
 import java.util.Date;
 
-//@FeignClient(name="Pay", url="${api.url.pay}")  // Pay Service URL 변수화 
-@FeignClient(name="Pay", url="${api.url.pay}", fallback=PayServiceImpl.class)  // FALLBAK 설정
-public interface PayService {
-    @RequestMapping(method= RequestMethod.GET, path="/pays")
-    public void pay(@RequestBody Pay pay);
+@FeignClient(name="approval", url="${api.url.pay}", fallback=ApprovalServiceImpl.class)
+//@FeignClient(name="approval", url="${api.url.pay}")
+public interface ApprovalService {
+    @RequestMapping(method= RequestMethod.DELETE, path="/approvals/{id}")
+    public void cancelApproval(@PathVariable long id);
 
 }
 
+
 ```
-- external.PayServiceImpl.java
+- external.ApprovalServiceImpl.java
 ```java
-package movie.external;
+package wimbledontenniscourt.external;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
-
 @Service
-public class PayServiceImpl implements PayService {
-    
-    public void pay(Pay pay) {
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-        System.out.println("@@@@@@@결제 서비스 지연중 입니다. @@@@@@@@@@@@");
-
-    }
-
+public class ApprovalServiceImpl implements ApprovalService {
+        public void cancelApproval(long id){
+            System.out.println("\n\n ######  승인서비스 지연중입니다.    #######");
+            System.out.println("######  잠시 뒤에 다시 시도해주세요.     #######");
+            System.out.println("######  승인서비스 지연중입니다.    #######\n\n");
+        }
 }
 
 
 ```
 
 Fallback 결과(Pay service 종료 후 예약실행 추가 시)
-![image](https://user-images.githubusercontent.com/86760622/131062766-99148589-21f6-4817-8fdd-331620f49e40.png)
+
+![image](https://user-images.githubusercontent.com/86760622/132300121-28d2cdcb-3e4a-4e62-9b92-a3b89b9dcb10.png)
+
 
 # 운영
 
