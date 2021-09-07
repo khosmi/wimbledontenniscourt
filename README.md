@@ -1089,9 +1089,10 @@ kubectl rollout restart deployment mycourt
             timeoutSeconds: 2
             periodSeconds: 5
 ```
-* Pod를 계속 재시작 한다.
+* Pod가 계속 재시작 된다.
 
-![Liveness](https://user-images.githubusercontent.com/53825723/131075307-5c1d1b88-ab90-47e7-be08-e2db0390d2c1.JPG)
+![image](https://user-images.githubusercontent.com/86760622/132356207-d678550e-c02b-4019-a717-b06070745547.png)
+
 
 * Pod에 연결이 가능할 경우  
     * 8080포트로 상태 확인
@@ -1105,9 +1106,9 @@ kubectl rollout restart deployment mycourt
             periodSeconds: 5
 ```
 
-* Pod가 정상적으로 띄워진다.
+* Pod가 정상적으로 실행중이다
 
-![Liveness성공](https://user-images.githubusercontent.com/53825723/131075311-d00cabb0-e30e-4311-8fbf-d731efe307c5.JPG)
+![image](https://user-images.githubusercontent.com/86760622/132357257-13f1d8f3-4c86-4da6-ba80-abf93e87d76e.png)
 
 * Liveness 설정이 안되어 있는 경우 Pod의 상태는 Running 이지만 연결이 불가능 할 수 있다.
 
