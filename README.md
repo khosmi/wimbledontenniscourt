@@ -14,7 +14,7 @@
 
 ### 비기능적 요구사항
 1. 트랜잭션
-   1. 예약 취소시 코트사용 승인정보가 반드시 등록되어야 한다.  → REQ/RES Sync 호출
+   1. 예약 취소시 코트사용 승인정보가 반드시 취소되어야 한다.  → REQ/RES Sync 호출
 2. 장애격리
    1. 승인시스템에서 장애가 발송해도 예약은 가능해야 한다 →Async(event-driven), Eventual Consistency
    1. 승인취소가 과중되면 예약을 잠시 후에 하도록 유도한다 → Circuit breaker, fallback
